@@ -118,12 +118,7 @@
       inset:0;
       background:
         radial-gradient(66% 48% at 10% 0%, #ffffff55 0, transparent 70%),
-        radial-gradient(64% 46% at 90% 0%, #ffefbd33 0, transparent 72%),
-        repeating-linear-gradient(
-          115deg,
-          rgba(255,255,255,.065) 0 12px,
-          rgba(255,255,255,0) 12px 24px
-        );
+        radial-gradient(64% 46% at 90% 0%, #ffefbd33 0, transparent 72%);
       mix-blend-mode:screen;
       pointer-events:none;
     }
@@ -150,7 +145,7 @@
 
     .hud-main{
       display:grid;
-      grid-template-columns:repeat(3, minmax(0, 1fr));
+      grid-template-columns:repeat(2, minmax(0, 1fr));
       gap:calc(10px * var(--hud-scale));
       min-width:0;
     }
@@ -189,14 +184,25 @@
       color:var(--shell-ink);
     }
 
-    .speed-value{
-      font-size:calc(24px * var(--hud-scale));
-      color:#355b8a;
-    }
-
     .score-card .stat-value{
       color:#ff5b9c;
       text-shadow:0 2px 0 #ffffffbb;
+    }
+
+    .score-card.is-fever{
+      border-color:#fff8d2;
+      background:
+        linear-gradient(118deg, #fff8db 0%, #ffe5ef 48%, #dff2ff 100%);
+      box-shadow:
+        0 0 0 1px #ffffffb8 inset,
+        0 14px 28px rgba(32,48,73,.2),
+        0 0 28px rgba(255,182,122,.34);
+      animation:scoreFeverGlow 1.05s ease-in-out infinite;
+    }
+
+    .score-card.is-fever .stat-label{
+      color:#8852bf;
+      letter-spacing:1.2px;
     }
 
     #score{
@@ -235,6 +241,10 @@
       background:linear-gradient(180deg, #edf1f8, #d9e1ee);
       color:#71839e;
       box-shadow:none;
+    }
+
+    .hearts.hit .life-heart.on{
+      animation:lifeHitPulse .35s ease-out 2;
     }
 
     .hud-side{
@@ -278,6 +288,14 @@
     }
 
     button:active{ transform:translateY(1px) scale(.992); }
+
+    button:disabled{
+      opacity:.65;
+      cursor:default;
+      transform:none;
+      box-shadow:0 4px 10px rgba(32,48,73,.14);
+      filter:none;
+    }
 
     button:focus-visible{
       outline:3px solid #245b99;
@@ -348,6 +366,69 @@
     .badge.fever-neon[data-phase="enter"]{ animation-duration:.9s; }
     .badge.fever-neon[data-phase="active"]{ animation-duration:1.25s; }
     .badge.fever-neon[data-phase="exit"]{ animation-duration:1.45s; opacity:.92; }
+
+    .pause-panel{
+      position:absolute;
+      inset:0;
+      display:grid;
+      place-items:center;
+      opacity:0;
+      pointer-events:none;
+      transition:opacity .18s ease;
+      background:
+        radial-gradient(120% 68% at 30% 6%, #ffffff35 0%, transparent 58%),
+        linear-gradient(180deg, rgba(10,20,36,0.24), rgba(10,20,36,0.62));
+      z-index:3;
+    }
+
+    .pause-panel.show{
+      opacity:1;
+      pointer-events:auto;
+    }
+
+    .pause-card{
+      width:min(520px, 92%);
+      border-radius:28px;
+      border:2px solid #ffffffd8;
+      background:
+        linear-gradient(165deg, #fffef8 0%, #ffeacd 54%, #ffe2f4 100%);
+      box-shadow:var(--shadow-strong);
+      padding:calc(20px * var(--ui-scale));
+      text-align:center;
+      color:#25405f;
+    }
+
+    .pause-title{
+      margin:0;
+      font-size:calc(32px * var(--title-scale));
+      line-height:1.16;
+      color:#294770;
+      text-shadow:0 2px 0 #ffffffd5;
+      font-family:"Dela Gothic One","M PLUS Rounded 1c",sans-serif;
+    }
+
+    .pause-desc{
+      margin:12px 0 14px;
+      font-size:calc(14px * var(--ui-scale));
+      font-weight:900;
+      color:#365a84;
+    }
+
+    .pause-actions{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(0,1fr));
+      gap:10px;
+    }
+
+    #resumeBtn{
+      background:linear-gradient(100deg, #ff7cb8 0%, #ffc76a 52%, #ffe98f 100%);
+      color:#1f3152;
+    }
+
+    #pauseRestartBtn{
+      background:linear-gradient(180deg, #f6fbff, #e4f2ff);
+      color:#24486a;
+    }
 
     .overlay{
       position:absolute;
@@ -453,7 +534,7 @@
     }
 
     :root[data-device="mobile"] .hud-main{
-      grid-template-columns:repeat(3, minmax(0,1fr));
+      grid-template-columns:repeat(2, minmax(0,1fr));
     }
 
     :root[data-device="mobile"] .hud-side{
@@ -503,7 +584,7 @@
       }
 
       .hud-main{
-        grid-template-columns:repeat(3, minmax(0,1fr));
+        grid-template-columns:repeat(2, minmax(0,1fr));
         gap:6px;
       }
 
@@ -520,17 +601,13 @@
         font-size:24px;
       }
 
-      .speed-value{
-        font-size:20px;
-      }
-
       .life-heart{
         width:22px;
         height:22px;
       }
 
       .btns button{
-        flex:1 1 calc(50% - 4px);
+        flex:1 1 auto;
       }
 
       .card{
@@ -549,6 +626,30 @@
       50%{ transform:scale(1.03); filter:saturate(1.12); }
     }
 
+    @keyframes scoreFeverGlow{
+      0%,100%{ transform:translateY(0); filter:saturate(1); }
+      50%{ transform:translateY(-1px); filter:saturate(1.16); }
+    }
+
+    @keyframes lifeHitPulse{
+      0%{ transform:scale(1); }
+      30%{ transform:scale(1.3); }
+      70%{ transform:scale(.92); }
+      100%{ transform:scale(1); }
+    }
+
+    @keyframes hudDamageShake{
+      0%,100%{ transform:translate3d(0,0,0); }
+      20%{ transform:translate3d(-6px,0,0); }
+      40%{ transform:translate3d(5px,-1px,0); }
+      60%{ transform:translate3d(-4px,1px,0); }
+      80%{ transform:translate3d(3px,0,0); }
+    }
+
+    .wrap.damage{
+      animation:hudDamageShake .32s ease-out;
+    }
+
     @media (prefers-reduced-motion: reduce) {
       body::before,
       body::after,
@@ -560,6 +661,10 @@
       button,
       #score{
         transition:none;
+      }
+
+      .score-card.is-fever{
+        animation:none !important;
       }
     }
   </style>
@@ -582,16 +687,10 @@
             <span class="hearts" id="hearts"></span>
           </span>
         </div>
-
-        <div class="stat-card" aria-label="スピード倍率">
-          <span class="stat-label">Speed</span>
-          <span class="stat-value speed-value" id="speedMul">x1.00</span>
-        </div>
       </div>
 
       <div class="hud-side">
         <div class="btns">
-          <button id="restartBtn" type="button">リスタート</button>
           <button id="pauseBtn" type="button">一時停止</button>
         </div>
 
@@ -604,21 +703,32 @@
       </div>
     </div>
 
+    <div class="pause-panel" id="pausePanel" aria-hidden="true">
+      <div class="pause-card">
+        <h2 class="pause-title">一時停止</h2>
+        <p class="pause-desc">続けるか、最初からやり直すか選んでね</p>
+        <div class="pause-actions">
+          <button id="pauseRestartBtn" type="button">リスタート</button>
+          <button id="resumeBtn" type="button">再開</button>
+        </div>
+      </div>
+    </div>
+
     <div class="overlay show" id="overlay">
       <div class="card">
         <h1 class="title">FRUIT CATCH</h1>
-        <p class="subtitle">カゴを動かして、フルーツをキャッチしよう！</p>
+        <p class="subtitle">スマホでサッと遊べるフルーツキャッチ！</p>
         <div class="how">
-          ← / → か A / D で移動<br/>
-          マウスやタッチでも移動OK<br/>
+          画面を左右になぞってカゴを移動<br/>
+          指1本でOK（片手プレイ向け）<br/>
           3回ミスでゲームオーバー<br/>
-          ⭐を取るとフィーバー（得点2倍）
+          星を取るとフィーバーで得点2倍
         </div>
         <div class="stack">
           <button id="startBtn" type="button">スタート！</button>
           <button id="soundBtn" type="button">サウンド: オン</button>
         </div>
-        <div class="note">スペースキーでも一時停止できる</div>
+        <div class="note">右上の「一時停止」でいつでも止められる</div>
       </div>
     </div>
   </div>
@@ -630,13 +740,16 @@
 
       // UI
       const scoreEl = document.getElementById('score');
+      const scoreCardEl = document.querySelector('.score-card');
       const heartsEl = document.getElementById('hearts');
+      const wrapEl = document.querySelector('.wrap');
       const overlay = document.getElementById('overlay');
+      const pausePanel = document.getElementById('pausePanel');
       const startBtn = document.getElementById('startBtn');
-      const restartBtn = document.getElementById('restartBtn');
+      const resumeBtn = document.getElementById('resumeBtn');
+      const pauseRestartBtn = document.getElementById('pauseRestartBtn');
       const pauseBtn = document.getElementById('pauseBtn');
       const soundBtn = document.getElementById('soundBtn');
-      const speedMulEl = document.getElementById('speedMul');
       const feverBadge = document.getElementById('feverBadge');
       const feverTimeEl = document.getElementById('feverTime');
       const root = document.documentElement;
@@ -650,7 +763,7 @@
           titleScale: 0.84,
           fxDensity: 0.56,
           fruitScale: 0.90,
-          basketScale: 0.92,
+          basketScale: 0.61,
           pauseScale: 0.78,
           tapTarget: 44
         },
@@ -688,7 +801,6 @@
       let particleDensity = 1;
       let backgroundMotionScale = 1;
       let rotationMotionScale = 1;
-      let pausePanelScale = 1;
       let floatTextScale = 1;
       let drawFixScaleY = 1;
 
@@ -706,19 +818,24 @@
         targetX: null
       };
 
-      // Fruits with fixed speed multipliers (0.8-1.3) and points
+      // Fruits (fixed size per species; faster falls are smaller)
       const FRUITS = [
-        { emoji:'🍌', mul:0.80, points: 8,  color:'#ffd670' },
-        { emoji:'🍏', mul:0.88, points: 9,  color:'#7ae582' },
-        { emoji:'🍎', mul:0.95, points:10,  color:'#ff4d6d' },
-        { emoji:'🍑', mul:1.02, points:10,  color:'#ff9770' },
-        { emoji:'🍓', mul:1.10, points:11,  color:'#ff70a6' },
-        { emoji:'🍇', mul:1.20, points:12,  color:'#9b5de5' },
-        { emoji:'🍉', mul:1.30, points:13,  color:'#46d19f' },
+        { kind:'banana',     mul:0.80, points: 8, color:'#ffd670' },
+        { kind:'apple',      mul:0.88, points: 9, color:'#ff6b7d' },
+        { kind:'orange',     mul:0.96, points:10, color:'#ffb24f' },
+        { kind:'peach',      mul:1.04, points:10, color:'#ff9b82' },
+        { kind:'strawberry', mul:1.12, points:11, color:'#ff5f92' },
+        { kind:'grape',      mul:1.22, points:12, color:'#8f7cff' },
+        { kind:'watermelon', mul:1.30, points:13, color:'#47ce8f' },
       ];
 
+      const FRUIT_MUL_MIN = Math.min(...FRUITS.map((f) => f.mul));
+      const FRUIT_MUL_MAX = Math.max(...FRUITS.map((f) => f.mul));
+
       // Special star
-      const STAR = { emoji:'⭐', chance:0.01 };
+      const STAR = { kind:'star', color:'#ffd670' };
+      const STAR_CHANCE_NORMAL = 0.08;
+      const STAR_CHANCE_FEVER = 0.08;
 
       // Spawn rate & base fall speed (global progression will multiply)
       function spawnInterval() {
@@ -728,6 +845,12 @@
       }
       function baseFallSpeed() {
         return 310; // base speed before multipliers
+      }
+
+      function getFruitRadiusForMul(mul) {
+        const range = Math.max(0.0001, FRUIT_MUL_MAX - FRUIT_MUL_MIN);
+        const t = clamp((mul - FRUIT_MUL_MIN) / range, 0, 1);
+        return fruitRadiusMax - (fruitRadiusMax - fruitRadiusMin) * t;
       }
 
       // State
@@ -768,6 +891,11 @@
       const feverSparks = [];
       const feverHitBursts = [];
       const feverStreams = [];
+      const shootingStars = [];
+
+      let damageFlash = 0;
+      let lifeFxTimeout = null;
+      let shootingStarSpawnTimer = 0;
 
       // Input
       const keys = new Set();
@@ -793,8 +921,9 @@
 
       // Buttons
       startBtn.addEventListener('click', () => startGame());
-      restartBtn.addEventListener('click', () => restartGame());
-      pauseBtn.addEventListener('click', () => togglePause());
+      pauseBtn.addEventListener('click', () => setPaused(true));
+      resumeBtn.addEventListener('click', () => setPaused(false));
+      pauseRestartBtn.addEventListener('click', () => restartGame());
 
       // Audio (WebAudio synth BGM: normal & fever)
       const audioCtx = (() => {
@@ -814,28 +943,82 @@
         setMusicEnabled(soundOn);
       });
 
+      function oneShotVoice({
+        time,
+        freq,
+        duration,
+        destination,
+        type = 'triangle',
+        gainPeak = 0.16,
+        detune = 0,
+        slideTo = null
+      }) {
+        if (!freq || !duration) return;
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = type;
+        osc.detune.setValueAtTime(detune, time);
+        osc.frequency.setValueAtTime(freq, time);
+        if (slideTo && slideTo > 0) {
+          osc.frequency.exponentialRampToValueAtTime(slideTo, time + duration * 0.88);
+        }
+
+        gain.gain.setValueAtTime(0.0001, time);
+        gain.gain.exponentialRampToValueAtTime(gainPeak, time + duration * 0.16);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+
+        osc.connect(gain);
+        gain.connect(destination);
+        osc.start(time);
+        osc.stop(time + duration + 0.02);
+      }
+
       // SFX
       function sfx(type='catch') {
         if (!audioCtx || !soundOn) return;
-        const t0 = audioCtx.currentTime;
-        const o = audioCtx.createOscillator();
-        const g = audioCtx.createGain();
-        o.connect(g); g.connect(audioCtx.destination);
+        const t0 = audioCtx.currentTime + 0.004;
+        const out = audioCtx.createGain();
+        out.gain.value = 0.24;
+        out.connect(audioCtx.destination);
 
-        let f1=700, f2=1000, dur=0.12;
-        if (type==='miss'){ f1=240; f2=140; dur=0.14; }
-        if (type==='star'){ f1=880; f2=1760; dur=0.18; }
+        const preset = type === 'miss'
+          ? { notes:[280, 220, 160], step:0.034, dur:0.11, wave:'triangle', harmWave:'sine', harmMul:0.50, sparkle:false }
+          : type === 'star'
+            ? { notes:[740, 988, 1320, 1760], step:0.026, dur:0.13, wave:'triangle', harmWave:'square', harmMul:2.0, sparkle:true }
+            : { notes:[560, 760, 960], step:0.024, dur:0.10, wave:'triangle', harmWave:'square', harmMul:1.5, sparkle:true };
 
-        o.type = 'sine';
-        o.frequency.setValueAtTime(f1, t0);
-        o.frequency.exponentialRampToValueAtTime(f2, t0 + dur*0.6);
+        for (let i=0; i<preset.notes.length; i++) {
+          const base = preset.notes[i];
+          const t = t0 + i * preset.step;
+          oneShotVoice({
+            time:t,
+            freq:base,
+            duration:preset.dur,
+            destination:out,
+            type:preset.wave,
+            gainPeak:type === 'miss' ? 0.11 : 0.14
+          });
+          oneShotVoice({
+            time:t + 0.003,
+            freq:base * preset.harmMul,
+            duration:preset.dur * 0.68,
+            destination:out,
+            type:preset.harmWave,
+            gainPeak:type === 'star' ? 0.09 : 0.06,
+            detune:6
+          });
+        }
 
-        g.gain.setValueAtTime(0.0001, t0);
-        g.gain.exponentialRampToValueAtTime(0.20, t0 + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-
-        o.start(t0);
-        o.stop(t0 + dur + 0.02);
+        if (preset.sparkle) {
+          oneShotVoice({
+            time:t0 + preset.step * 0.5,
+            freq:type === 'star' ? 2480 : 2120,
+            duration:type === 'star' ? 0.14 : 0.09,
+            destination:out,
+            type:'square',
+            gainPeak:type === 'star' ? 0.075 : 0.05
+          });
+        }
       }
 
       // BGM sequencer
@@ -843,89 +1026,112 @@
         if (!audioCtx) return null;
 
         const master = audioCtx.createGain();
-        master.gain.value = 0.22;
+        master.gain.value = 0.2;
         master.connect(audioCtx.destination);
 
         const normalGain = audioCtx.createGain();
-        const feverGain  = audioCtx.createGain();
+        const feverGain = audioCtx.createGain();
         normalGain.gain.value = 0.0;
-        feverGain.gain.value  = 0.0;
+        feverGain.gain.value = 0.0;
         normalGain.connect(master);
         feverGain.connect(master);
 
         let enabled = true;
-        let mode = 'normal'; // 'normal' | 'fever'
-
-        const lookAhead = 0.12;
-        const interval = 25; // ms
+        let mode = 'normal';
+        let step = 0;
         let timer = null;
         let nextNoteTime = 0;
 
-        // cute chord-ish notes (freq)
+        const lookAhead = 0.13;
+        const interval = 22;
+        const bpmNormal = 124;
+        const bpmFever = 152;
+
         const N = {
           C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00, B4:493.88,
-          C5:523.25, D5:587.33, E5:659.25, G5:783.99, A5:880.00
+          C5:523.25, D5:587.33, E5:659.25, F5:698.46, G5:783.99, A5:880.00, B5:987.77,
+          C6:1046.5
         };
 
-        // Step patterns (16 steps)
-        const normalMelody = [N.E5,0,N.G5,0, N.A5,0,N.G5,0, N.E5,0,N.D5,0, N.C5,0,N.D5,0];
-        const normalBass   = [N.C4,0,N.C4,0, N.A4,0,N.A4,0, N.F4,0,N.F4,0, N.G4,0,N.G4,0];
+        const normalLead = [
+          N.E5,N.G5,N.B5,N.G5, N.D5,N.F5,N.A5,N.F5,
+          N.C5,N.E5,N.G5,N.E5, N.D5,N.F5,N.A5,N.G5
+        ];
+        const normalBass = [
+          N.C4,0,N.C4,0, N.F4,0,N.F4,0,
+          N.A4,0,N.A4,0, N.G4,0,N.G4,0
+        ];
+        const normalChime = [
+          N.E6,0,0,N.B5, 0,N.A5,0,0,
+          N.G5,0,0,N.E5, 0,N.D5,0,0
+        ];
 
-        const feverMelody  = [N.A5,N.G5,N.E5,0, N.G5,N.E5,N.D5,0, N.E5,N.G5,N.A5,0, N.G5,N.E5,N.D5,0];
-        const feverBass    = [N.A4,0,N.A4,0, N.G4,0,N.G4,0, N.E4,0,N.E4,0, N.D4,0,N.D4,0];
+        const feverLead = [
+          N.A5,N.C6,N.B5,N.G5, N.E5,N.G5,N.A5,N.B5,
+          N.C6,N.B5,N.G5,N.E5, N.G5,N.A5,N.C6,N.B5
+        ];
+        const feverBass = [
+          N.A4,0,N.A4,0, N.G4,0,N.G4,0,
+          N.E4,0,N.E4,0, N.F4,0,N.F4,0
+        ];
+        const feverChime = [
+          N.C6,0,N.B5,0, N.A5,0,N.G5,0,
+          N.E5,0,N.G5,0, N.A5,0,N.B5,0
+        ];
 
-        const bpmNormal = 118;
-        const bpmFever  = 140;
-
-        function playNote(time, freq, duration, gainNode, type='triangle') {
+        function playPatternNote(time, freq, duration, gainNode, options = {}) {
           if (!freq) return;
-          const o = audioCtx.createOscillator();
-          const g = audioCtx.createGain();
-          o.type = type;
-          o.frequency.setValueAtTime(freq, time);
-
-          g.gain.setValueAtTime(0.0001, time);
-          g.gain.exponentialRampToValueAtTime(0.18, time + 0.01);
-          g.gain.exponentialRampToValueAtTime(0.0001, time + duration);
-
-          o.connect(g);
-          g.connect(gainNode);
-          o.start(time);
-          o.stop(time + duration + 0.01);
+          oneShotVoice({
+            time,
+            freq,
+            duration,
+            destination:gainNode,
+            type:options.type || 'triangle',
+            gainPeak:options.gainPeak ?? 0.12,
+            detune:options.detune ?? 0,
+            slideTo:options.slideTo ?? null
+          });
         }
-
-        let step = 0;
 
         function scheduler() {
           if (!enabled) return;
-
           const now = audioCtx.currentTime;
+
           while (nextNoteTime < now + lookAhead) {
-            const isFever = (mode === 'fever');
+            const isFever = mode === 'fever';
             const bpm = isFever ? bpmFever : bpmNormal;
-            const secPerBeat = 60 / bpm;
-            const stepDur = secPerBeat / 4; // 16th note
+            const stepDur = (60 / bpm) / 4;
+            const lane = isFever ? feverGain : normalGain;
+            const lead = isFever ? feverLead : normalLead;
+            const bass = isFever ? feverBass : normalBass;
+            const chime = isFever ? feverChime : normalChime;
+            const idx = step % 16;
 
-            const mel = isFever ? feverMelody : normalMelody;
-            const bas = isFever ? feverBass   : normalBass;
+            playPatternNote(nextNoteTime, lead[idx], stepDur * 0.92, lane, {
+              type:isFever ? 'sawtooth' : 'triangle',
+              gainPeak:isFever ? 0.12 : 0.10,
+              slideTo:isFever ? lead[idx] * 1.02 : null
+            });
 
-            // melody
-            playNote(nextNoteTime, mel[step % 16], stepDur*0.92, isFever ? feverGain : normalGain, 'triangle');
-            // bass
-            playNote(nextNoteTime, bas[step % 16], stepDur*0.98, isFever ? feverGain : normalGain, 'sine');
+            playPatternNote(nextNoteTime, bass[idx], stepDur * 0.98, lane, {
+              type:'sine',
+              gainPeak:isFever ? 0.10 : 0.085,
+              detune:-3
+            });
 
-            // tiny hi-hat tick
             if ((step % 2) === 0) {
-              const o = audioCtx.createOscillator();
-              const g = audioCtx.createGain();
-              o.type = 'square';
-              o.frequency.setValueAtTime(isFever ? 2200 : 1800, nextNoteTime);
-              g.gain.setValueAtTime(0.0001, nextNoteTime);
-              g.gain.exponentialRampToValueAtTime(isFever ? 0.06 : 0.05, nextNoteTime + 0.005);
-              g.gain.exponentialRampToValueAtTime(0.0001, nextNoteTime + 0.03);
-              o.connect(g); g.connect(isFever ? feverGain : normalGain);
-              o.start(nextNoteTime);
-              o.stop(nextNoteTime + 0.04);
+              playPatternNote(nextNoteTime + 0.004, chime[idx], stepDur * 0.55, lane, {
+                type:'square',
+                gainPeak:isFever ? 0.052 : 0.04,
+                detune:8
+              });
+            }
+
+            if ((step % 4) === 0) {
+              playPatternNote(nextNoteTime, isFever ? 146 : 128, stepDur * 0.42, lane, {
+                type:'sine',
+                gainPeak:isFever ? 0.072 : 0.05
+              });
             }
 
             nextNoteTime += stepDur;
@@ -935,7 +1141,7 @@
 
         function start() {
           if (timer) return;
-          nextNoteTime = audioCtx.currentTime + 0.05;
+          nextNoteTime = audioCtx.currentTime + 0.06;
           timer = setInterval(scheduler, interval);
         }
 
@@ -949,19 +1155,23 @@
 
         function setEnabled(v) {
           enabled = v;
-          if (!enabled) stop();
-          else start();
+          if (!enabled) {
+            stop();
+            return;
+          }
+          start();
+          setMode(mode);
         }
 
         function setMode(newMode) {
           mode = newMode;
           const t = audioCtx.currentTime;
           if (mode === 'fever') {
-            normalGain.gain.setTargetAtTime(0.0, t, 0.06);
-            feverGain.gain.setTargetAtTime(1.0, t, 0.06);
+            normalGain.gain.setTargetAtTime(0.0, t, 0.05);
+            feverGain.gain.setTargetAtTime(1.0, t, 0.05);
           } else {
-            feverGain.gain.setTargetAtTime(0.0, t, 0.06);
-            normalGain.gain.setTargetAtTime(1.0, t, 0.06);
+            feverGain.gain.setTargetAtTime(0.0, t, 0.05);
+            normalGain.gain.setTargetAtTime(1.0, t, 0.05);
           }
         }
 
@@ -986,8 +1196,35 @@
         return clamp(particleDensity * runtimeFxQuality, 0.12, 1.12);
       }
 
+      function updateScoreCardState() {
+        const hot = fever || feverFx.phase !== 'idle';
+        scoreCardEl.classList.toggle('is-fever', hot);
+      }
+
+      function updatePausePanel() {
+        const show = running && paused && !gameOver;
+        pausePanel.classList.toggle('show', show);
+        pausePanel.setAttribute('aria-hidden', show ? 'false' : 'true');
+      }
+
+      function triggerLifeDamageEffect() {
+        damageFlash = clamp(damageFlash + 1, 0, 1.2);
+        wrapEl.classList.remove('damage');
+        heartsEl.classList.remove('hit');
+        void wrapEl.offsetWidth;
+        wrapEl.classList.add('damage');
+        heartsEl.classList.add('hit');
+        if (lifeFxTimeout) clearTimeout(lifeFxTimeout);
+        lifeFxTimeout = setTimeout(() => {
+          wrapEl.classList.remove('damage');
+          heartsEl.classList.remove('hit');
+          lifeFxTimeout = null;
+        }, 360);
+      }
+
       function updateScorePulseStyles() {
         const hot = fever || feverFx.phase !== 'idle';
+        updateScoreCardState();
         if (scorePulse <= 0.001) {
           scoreEl.style.transform = 'scale(1)';
           scoreEl.style.textShadow = 'none';
@@ -1008,12 +1245,14 @@
         feverShockwaves.length = 0;
         feverSparks.length = 0;
         feverHitBursts.length = 0;
+        shootingStars.length = 0;
         feverFx.phase = 'idle';
         feverFx.phaseStart = 0;
         feverFx.flash = 0;
         feverFx.hitPulse = 0;
         scorePulse = 0;
         updateScorePulseStyles();
+        updateScoreCardState();
         feverBadge.dataset.phase = 'idle';
         feverBadge.classList.remove('fever-neon');
       }
@@ -1113,6 +1352,23 @@
         }
       }
 
+      function spawnShootingStar(intensity = 1) {
+        const heading = rand(Math.PI * 0.80, Math.PI * 0.90);
+        const speed = rand(620, 1060) * (reducedMotionQuery.matches ? 0.64 : 1) * (0.82 + intensity * 0.25);
+        const len = rand(76, 168);
+        shootingStars.push({
+          x: rand(canvas.width * 0.08, canvas.width * 0.92),
+          y: rand(-canvas.height * 0.2, canvas.height * 0.36),
+          vx: Math.cos(heading) * speed,
+          vy: Math.sin(heading) * speed,
+          life: rand(0.42, 0.72),
+          t: 0,
+          len,
+          width: rand(1.3, 2.9),
+          tone: Math.random() > 0.5 ? '#9fd8ff' : '#ffe39a'
+        });
+      }
+
       function triggerFeverHitFeedback(x, y, color='#ffd670') {
         const density = getRuntimeFxDensity();
         const burstLife = reducedMotionQuery.matches ? 0.24 : 0.32;
@@ -1158,6 +1414,7 @@
           feverBadge.dataset.phase = 'enter';
           spawnFeverShockwave(originX, originY, 'entry');
           spawnFeverEntrySparks(originX, originY);
+          updateScoreCardState();
           return;
         }
         if (nextPhase === 'active') {
@@ -1165,6 +1422,7 @@
           feverFx.phaseStart = nowSec;
           feverBadge.classList.add('show', 'fever-neon');
           feverBadge.dataset.phase = 'active';
+          updateScoreCardState();
           return;
         }
         if (nextPhase === 'exit') {
@@ -1176,6 +1434,7 @@
           feverBadge.dataset.phase = 'exit';
           spawnFeverShockwave(canvas.width * 0.5, canvas.height * 0.32, 'exit');
           spawnFeverExitConverge();
+          updateScoreCardState();
           return;
         }
         feverFx.phase = 'idle';
@@ -1185,6 +1444,7 @@
         feverBadge.dataset.phase = 'idle';
         feverBadge.classList.remove('fever-neon');
         if (!fever) feverBadge.classList.remove('show');
+        updateScoreCardState();
       }
 
       function getFeverVisualState(nowSec) {
@@ -1221,6 +1481,18 @@
           setFeverPhase('idle', totalElapsed);
         }
 
+        const meteorActive = fever || state.intensity > 0.06;
+        if (meteorActive) {
+          shootingStarSpawnTimer += dt;
+          const interval = reducedMotionQuery.matches ? 0.34 : (0.20 - state.intensity * 0.08);
+          while (shootingStarSpawnTimer >= interval) {
+            shootingStarSpawnTimer -= interval * rand(0.72, 1.08);
+            spawnShootingStar(state.intensity);
+          }
+        } else {
+          shootingStarSpawnTimer = 0;
+        }
+
         for (let i=feverShockwaves.length-1; i>=0; i--) {
           const w = feverShockwaves[i];
           w.t += dt;
@@ -1239,6 +1511,16 @@
         for (let i=feverHitBursts.length-1; i>=0; i--) {
           feverHitBursts[i].t += dt;
           if (feverHitBursts[i].t > feverHitBursts[i].life) feverHitBursts.splice(i, 1);
+        }
+
+        for (let i=shootingStars.length-1; i>=0; i--) {
+          const s = shootingStars[i];
+          s.t += dt;
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+          if (s.t > s.life || s.x + s.len < -40 || s.y - s.len > canvas.height + 40) {
+            shootingStars.splice(i, 1);
+          }
         }
 
         updateScorePulseStyles();
@@ -1347,7 +1629,6 @@
         particleDensity = clamp(fx * (reducedMotion ? 0.65 : 0.92), 0.14, 1.06);
         backgroundMotionScale = clamp(motionScale * (reducedMotion ? 0.88 : 1.00), 0.32, 1.00);
         rotationMotionScale = clamp(motionScale * (reducedMotion ? 0.78 : 1.00), 0.28, 1.00);
-        pausePanelScale = pauseScale;
         floatTextScale = clamp(uiScale, 0.82, 1.05);
         rebuildFeverStreams();
 
@@ -1408,12 +1689,12 @@
 
       function resetOverlayTextToStart() {
         overlay.querySelector('.title').textContent = 'FRUIT CATCH';
-        overlay.querySelector('.subtitle').textContent = 'カゴを動かして、フルーツをキャッチしよう！';
+        overlay.querySelector('.subtitle').textContent = 'スマホでサッと遊べるフルーツキャッチ！';
         overlay.querySelector('.how').innerHTML =
-          `← / → か A / D で移動<br/>
-           マウスやタッチでも移動OK<br/>
+          `画面を左右になぞってカゴを移動<br/>
+           指1本でOK（片手プレイ向け）<br/>
            3回ミスでゲームオーバー<br/>
-           ⭐を取るとフィーバー（得点2倍）`;
+           星を取るとフィーバーで得点2倍`;
         startBtn.textContent = 'スタート！';
       }
 
@@ -1423,11 +1704,20 @@
         objects.length = 0;
         pops.length = 0;
         floatTexts.length = 0;
+        shootingStars.length = 0;
         totalElapsed = 0;
         fever = false;
         feverEnd = 0;
         gameOver = false;
         paused = false;
+        damageFlash = 0;
+        shootingStarSpawnTimer = 0;
+        if (lifeFxTimeout) {
+          clearTimeout(lifeFxTimeout);
+          lifeFxTimeout = null;
+        }
+        wrapEl.classList.remove('damage');
+        heartsEl.classList.remove('hit');
 
         basket.x = canvas.width/2;
         basket.y = canvas.height - Math.max(76, canvas.height * 0.125);
@@ -1435,12 +1725,13 @@
 
         scoreEl.textContent = '0';
         feverTimeEl.textContent = `${FEVER_DURATION.toFixed(1)}s`;
-        speedMulEl.textContent = 'x1.00';
         updateHearts();
 
-        pauseBtn.textContent = '一時停止';
+        pauseBtn.disabled = false;
         clearFeverVisualState();
         feverBadge.classList.remove('show');
+        updateScoreCardState();
+        updatePausePanel();
 
         if (music && soundOn) {
           music.setEnabled(true);
@@ -1452,6 +1743,7 @@
         overlay.classList.remove('show');
         resetState();
         running = true;
+        updatePausePanel();
 
         if (audioCtx) audioCtx.resume?.();
         setMusicEnabled(soundOn);
@@ -1461,15 +1753,18 @@
         overlay.classList.remove('show');
         resetState();
         running = true;
+        updatePausePanel();
 
         if (audioCtx) audioCtx.resume?.();
         setMusicEnabled(soundOn);
       }
 
-      function togglePause() {
+      function setPaused(nextPaused) {
         if (!running || gameOver) return;
-        paused = !paused;
-        pauseBtn.textContent = paused ? '再開' : '一時停止';
+        paused = !!nextPaused;
+        pauseBtn.textContent = '一時停止';
+        pauseBtn.disabled = paused;
+        updatePausePanel();
 
         if (music) {
           if (paused) music.setEnabled(false);
@@ -1477,12 +1772,20 @@
         }
       }
 
+      function togglePause() {
+        if (!running || gameOver) return;
+        setPaused(!paused);
+      }
+
       function endGame() {
         gameOver = true;
         running = false;
+        paused = false;
+        pauseBtn.disabled = false;
         fever = false;
         clearFeverVisualState();
         feverBadge.classList.remove('show');
+        updatePausePanel();
 
         if (music) music.setEnabled(false);
 
@@ -1551,20 +1854,20 @@
       }
 
       function spawnObject() {
-        const r = rand(fruitRadiusMin, fruitRadiusMax);
-        const x = rand(r+18, canvas.width - r - 18);
-
-        const isStar = Math.random() < STAR.chance;
+        const starChance = fever ? STAR_CHANCE_FEVER : STAR_CHANCE_NORMAL;
+        const isStar = Math.random() < starChance;
 
         if (isStar) {
+          const r = clamp((fruitRadiusMin + fruitRadiusMax) * 0.44, 18, 36);
+          const x = rand(r + 18, canvas.width - r - 18);
           objects.push({
             kind: 'star',
-            emoji: STAR.emoji,
+            fruitKind: STAR.kind,
             x, y: -r - 10,
-            r: r * 0.92,
+            r,
             baseMul: 1.00,
             points: 0,
-            color: '#ffd670',
+            color: STAR.color,
             rot: rand(0, Math.PI*2),
             spin: rand(-2.8, 2.8),
             vyBase: baseFallSpeed() * 1.05
@@ -1573,9 +1876,11 @@
         }
 
         const t = FRUITS[Math.floor(Math.random()*FRUITS.length)];
+        const r = getFruitRadiusForMul(t.mul);
+        const x = rand(r + 18, canvas.width - r - 18);
         objects.push({
           kind: 'fruit',
-          emoji: t.emoji,
+          fruitKind: t.kind,
           x, y: -r - 10,
           r,
           baseMul: t.mul,
@@ -1612,87 +1917,82 @@
         ctx.closePath();
       }
 
-      function getFruitStyle(emoji) {
-        switch (emoji) {
-          case '🍌':
+      function getFruitStyle(fruitKind) {
+        switch (fruitKind) {
+          case 'banana':
             return {
               kind: 'banana',
-              base: '#ffd54f',
-              shade: '#f4b731',
-              highlight: '#fff2a8',
-              stem: '#9c6b24',
-              seed: '#f1a83a',
-              leaf: '#64bf4f'
+              base: '#ffd65a',
+              shade: '#f0ae29',
+              highlight: '#fff3ad',
+              stem: '#8d5e1c',
+              leaf: '#63bf53'
             };
-          case '🍏':
+          case 'apple':
             return {
-              kind: 'round',
-              base: '#7fe14e',
-              shade: '#54ba38',
-              highlight: '#d3ffae',
-              stem: '#6b4021',
-              leaf: '#5cae45',
-              accent: '#a5ec6e'
+              kind: 'apple',
+              base: '#ff5a6e',
+              shade: '#c92f4d',
+              highlight: '#ffbfbe',
+              stem: '#6d4022',
+              leaf: '#62b54d'
             };
-          case '🍎':
+          case 'orange':
             return {
-              kind: 'round',
-              base: '#ff5b5b',
-              shade: '#cf3347',
-              highlight: '#ffb5b1',
-              stem: '#6b4021',
-              leaf: '#5bae45',
-              accent: '#ff8a8a'
+              kind: 'orange',
+              base: '#ffb046',
+              shade: '#e67f25',
+              highlight: '#ffd299',
+              stem: '#7b4d27',
+              leaf: '#5fb754'
             };
-          case '🍑':
+          case 'peach':
             return {
-              kind: 'round',
-              base: '#ffae75',
-              shade: '#ff7f6d',
-              highlight: '#ffe0b2',
-              stem: '#6a3f1f',
-              leaf: '#71be54',
-              accent: '#ffbf8f'
+              kind: 'peach',
+              base: '#ffb27f',
+              shade: '#ff7f81',
+              highlight: '#ffe2bc',
+              stem: '#7e4a27',
+              leaf: '#69bd53'
             };
-          case '🍓':
+          case 'strawberry':
             return {
               kind: 'strawberry',
-              base: '#ff5a8f',
-              shade: '#d93265',
-              highlight: '#ff9dbd',
+              base: '#ff4c7e',
+              shade: '#c82858',
+              highlight: '#ff9fb9',
               stem: '#6f3f1f',
-              leaf: '#63bf53',
+              leaf: '#62bf53',
               seed: '#ffe9b5'
             };
-          case '🍇':
+          case 'grape':
             return {
               kind: 'grape',
-              base: '#9f7af6',
-              shade: '#7448ca',
-              highlight: '#ccb6ff',
-              stem: '#6f3f1f',
-              leaf: '#63bc53',
-              seed: '#d7c2ff'
+              base: '#8c72f2',
+              shade: '#5f3fbb',
+              highlight: '#ccbeff',
+              stem: '#70411f',
+              leaf: '#67b853',
+              seed: '#d6c5ff'
             };
-          case '🍉':
+          case 'watermelon':
             return {
               kind: 'watermelon',
-              base: '#56d48a',
-              shade: '#36a95f',
-              highlight: '#9bf2bb',
-              stem: '#6f3f1f',
-              leaf: '#63bc53',
+              base: '#4ecf87',
+              shade: '#2d9f5b',
+              highlight: '#95efbd',
+              stem: '#70411f',
+              leaf: '#65b753',
               seed: '#222334'
             };
           default:
             return {
-              kind: 'round',
-              base: '#ff8ab8',
-              shade: '#dd4f86',
-              highlight: '#ffd5e7',
-              stem: '#6a3f1f',
-              leaf: '#6bbb57',
-              accent: '#ffb1cf'
+              kind: 'orange',
+              base: '#ffae54',
+              shade: '#de7f2b',
+              highlight: '#ffe0ad',
+              stem: '#7b4d27',
+              leaf: '#63b857'
             };
         }
       }
@@ -1729,6 +2029,91 @@
         ctx.moveTo(r*0.02, -r*0.92);
         ctx.quadraticCurveTo(r*0.34, -r*1.06, r*0.36, -r*0.78);
         ctx.quadraticCurveTo(r*0.18, -r*0.68, r*0.02, -r*0.92);
+        ctx.fill();
+      }
+
+      function drawApple(style, r) {
+        const body = ctx.createRadialGradient(-r * 0.34, -r * 0.46, r * 0.16, 0, 0, r * 1.15);
+        body.addColorStop(0, style.highlight);
+        body.addColorStop(0.58, style.base);
+        body.addColorStop(1, style.shade);
+        ctx.fillStyle = body;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.92);
+        ctx.bezierCurveTo(r * 0.72, -r * 1.02, r * 1.0, -r * 0.06, r * 0.52, r * 0.74);
+        ctx.bezierCurveTo(r * 0.26, r * 0.98, -r * 0.26, r * 0.98, -r * 0.52, r * 0.74);
+        ctx.bezierCurveTo(-r * 1.0, -r * 0.06, -r * 0.72, -r * 1.02, 0, -r * 0.92);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.fillStyle = 'rgba(255,255,255,.32)';
+        ctx.beginPath();
+        ctx.ellipse(-r * 0.3, -r * 0.35, r * 0.23, r * 0.14, -0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = style.stem;
+        ctx.lineWidth = Math.max(2, r * 0.12);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.88);
+        ctx.quadraticCurveTo(r * 0.04, -r * 1.16, r * 0.12, -r * 0.98);
+        ctx.stroke();
+
+        ctx.fillStyle = style.leaf;
+        ctx.beginPath();
+        ctx.moveTo(r * 0.10, -r * 0.94);
+        ctx.quadraticCurveTo(r * 0.46, -r * 1.07, r * 0.42, -r * 0.76);
+        ctx.quadraticCurveTo(r * 0.23, -r * 0.68, r * 0.10, -r * 0.94);
+        ctx.fill();
+      }
+
+      function drawOrange(style, r) {
+        drawRoundFruit(style, r);
+        const dots = Math.max(12, Math.round(r * 0.45));
+        ctx.fillStyle = 'rgba(255,203,127,.45)';
+        for (let i=0; i<dots; i++) {
+          const a = (Math.PI * 2 * i / dots) + (i % 2 ? 0.2 : -0.12);
+          const rr = r * rand(0.14, 0.76);
+          ctx.beginPath();
+          ctx.arc(Math.cos(a) * rr, Math.sin(a) * rr, r * 0.04, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      function drawPeach(style, r) {
+        const body = ctx.createRadialGradient(-r * 0.28, -r * 0.42, r * 0.12, 0, 0, r * 1.12);
+        body.addColorStop(0, style.highlight);
+        body.addColorStop(0.55, style.base);
+        body.addColorStop(1, style.shade);
+        ctx.fillStyle = body;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.88);
+        ctx.bezierCurveTo(r * 0.74, -r * 0.84, r * 0.86, r * 0.10, 0, r * 0.96);
+        ctx.bezierCurveTo(-r * 0.86, r * 0.10, -r * 0.74, -r * 0.84, 0, -r * 0.88);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,126,136,.5)';
+        ctx.lineWidth = Math.max(1.8, r * 0.08);
+        ctx.beginPath();
+        ctx.moveTo(0, -r * 0.58);
+        ctx.quadraticCurveTo(-r * 0.1, 0, 0, r * 0.74);
+        ctx.stroke();
+
+        ctx.strokeStyle = style.stem;
+        ctx.lineWidth = Math.max(2, r * 0.12);
+        ctx.beginPath();
+        ctx.moveTo(r * 0.02, -r * 0.9);
+        ctx.quadraticCurveTo(r * 0.04, -r * 1.1, r * 0.14, -r * 0.92);
+        ctx.stroke();
+
+        ctx.fillStyle = style.leaf;
+        ctx.beginPath();
+        ctx.moveTo(r * 0.12, -r * 0.9);
+        ctx.quadraticCurveTo(r * 0.42, -r * 1.03, r * 0.38, -r * 0.76);
+        ctx.quadraticCurveTo(r * 0.20, -r * 0.68, r * 0.12, -r * 0.9);
         ctx.fill();
       }
 
@@ -1912,9 +2297,9 @@
 
         ctx.save();
         const warmWash = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        warmWash.addColorStop(0, 'rgba(255,227,141,.56)');
-        warmWash.addColorStop(0.55, 'rgba(255,138,187,.44)');
-        warmWash.addColorStop(1, 'rgba(103,184,255,.38)');
+        warmWash.addColorStop(0, 'rgba(88,136,255,.38)');
+        warmWash.addColorStop(0.55, 'rgba(152,112,255,.33)');
+        warmWash.addColorStop(1, 'rgba(89,232,255,.34)');
         ctx.globalAlpha = (0.10 + pulse * 0.10) * intensity;
         ctx.fillStyle = warmWash;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -1929,9 +2314,9 @@
           centerY,
           canvas.width * 0.52
         );
-        aura.addColorStop(0, 'rgba(255,255,255,0.62)');
-        aura.addColorStop(0.24, 'rgba(255,235,175,0.42)');
-        aura.addColorStop(0.56, 'rgba(255,145,190,0.22)');
+        aura.addColorStop(0, 'rgba(235,246,255,0.62)');
+        aura.addColorStop(0.24, 'rgba(141,213,255,0.42)');
+        aura.addColorStop(0.56, 'rgba(188,140,255,0.22)');
         aura.addColorStop(1, 'rgba(103,184,255,0)');
         ctx.globalAlpha = (0.14 + pulse * 0.12) * intensity;
         ctx.fillStyle = aura;
@@ -1940,7 +2325,7 @@
 
         const streamAlpha = Math.min(0.34, (0.08 + intensity * 0.16) * (0.5 + dynamicFx * 0.5));
         if (streamAlpha > 0.01 && feverStreams.length) {
-          const tones = ['#ffe18e', '#ff8bbb', '#7ec3ff'];
+          const tones = ['#86d8ff', '#9ea7ff', '#ffd2fb'];
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
           for (let i=0; i<feverStreams.length; i++) {
@@ -1962,7 +2347,7 @@
         if (feverFx.flash > 0.001) {
           ctx.save();
           ctx.globalAlpha = feverFx.flash * (reducedMotionQuery.matches ? 0.14 : 0.26);
-          ctx.fillStyle = '#fff9ef';
+          ctx.fillStyle = '#ddf5ff';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.restore();
         }
@@ -2085,6 +2470,113 @@
         ctx.restore();
       }
 
+      function drawShootingStarsLayer() {
+        if (!shootingStars.length) return;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const s of shootingStars) {
+          const lifeK = 1 - (s.t / s.life);
+          if (lifeK <= 0) continue;
+          const tx = s.x - s.vx * 0.05;
+          const ty = s.y - s.vy * 0.05;
+          const trail = ctx.createLinearGradient(s.x, s.y, tx, ty);
+          trail.addColorStop(0, s.tone);
+          trail.addColorStop(1, 'rgba(255,255,255,0)');
+          ctx.globalAlpha = lifeK * 0.92;
+          ctx.strokeStyle = trail;
+          ctx.lineWidth = s.width * (0.7 + lifeK * 0.7);
+          ctx.beginPath();
+          ctx.moveTo(s.x, s.y);
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawNightCityBackdrop(now, dynamicFx, intensity) {
+        const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        sky.addColorStop(0, '#081229');
+        sky.addColorStop(0.48, '#112145');
+        sky.addColorStop(1, '#1e2c4e');
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.save();
+        const moon = ctx.createRadialGradient(
+          canvas.width * 0.82,
+          canvas.height * 0.15,
+          10,
+          canvas.width * 0.82,
+          canvas.height * 0.15,
+          canvas.width * 0.12
+        );
+        moon.addColorStop(0, 'rgba(255,255,238,0.92)');
+        moon.addColorStop(0.46, 'rgba(193,225,255,0.45)');
+        moon.addColorStop(1, 'rgba(155,194,255,0)');
+        ctx.globalAlpha = 0.44 + intensity * 0.22;
+        ctx.fillStyle = moon;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+
+        const sparkleCount = Math.max(36, Math.round((70 + intensity * 90) * dynamicFx));
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (let i=0; i<sparkleCount; i++) {
+          const x = (i * 137.17 + (i % 5) * 11.4) % canvas.width;
+          const y = 18 + ((i * 71.31) % (canvas.height * 0.58));
+          const twinkle = 0.35 + 0.65 * (0.5 + 0.5 * Math.sin(now * 0.002 + i * 1.17));
+          const r = (i % 3 ? 1.0 : 1.7) * (0.8 + intensity * 0.3);
+          ctx.globalAlpha = twinkle * (0.34 + intensity * 0.36);
+          ctx.fillStyle = i % 4 === 0 ? '#ffd9aa' : i % 4 === 1 ? '#a9deff' : '#d1c2ff';
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+
+        const horizon = canvas.height * 0.72;
+        ctx.save();
+        let x = -20;
+        let i = 0;
+        while (x < canvas.width + 30) {
+          const bw = 44 + ((i * 37) % 56);
+          const bh = canvas.height * (0.18 + ((i * 29) % 84) / 260 + intensity * 0.06);
+          const y = horizon - bh;
+          const tone = 20 + (i % 5) * 8;
+          ctx.fillStyle = `rgb(${tone - 8}, ${tone + 6}, ${tone + 20})`;
+          ctx.fillRect(x, y, bw, canvas.height - y);
+
+          const winCols = Math.max(2, Math.floor(bw / 13));
+          const winRows = Math.max(4, Math.floor((bh - 18) / 14));
+          const offsetX = x + 4;
+          const offsetY = y + 8;
+          for (let cx=0; cx<winCols; cx++) {
+            for (let cy=0; cy<winRows; cy++) {
+              const light = Math.sin(now * 0.0024 + i * 0.62 + cx * 0.9 + cy * 1.2);
+              if (light < 0.05) continue;
+              const wx = offsetX + cx * ((bw - 8) / winCols);
+              const wy = offsetY + cy * ((bh - 14) / winRows);
+              ctx.globalAlpha = (0.25 + light * 0.22) * (0.68 + intensity * 0.32);
+              ctx.fillStyle = (cx + cy + i) % 3 === 0 ? '#ffd58d' : (cx + i) % 2 === 0 ? '#b8e0ff' : '#f8f0ff';
+              ctx.fillRect(wx, wy, 4, 6);
+            }
+          }
+          x += bw - 3;
+          i++;
+        }
+        ctx.restore();
+
+        ctx.save();
+        const groundGlow = ctx.createLinearGradient(0, horizon - 6, 0, canvas.height);
+        groundGlow.addColorStop(0, 'rgba(88,123,190,0.16)');
+        groundGlow.addColorStop(1, 'rgba(15,26,49,0.54)');
+        ctx.fillStyle = groundGlow;
+        ctx.fillRect(0, horizon - 4, canvas.width, canvas.height - horizon + 4);
+        ctx.restore();
+
+        drawShootingStarsLayer();
+      }
+
       function drawBackground() {
         const now = performance.now();
         const dynamicFx = clamp(fxDensity * runtimeFxQuality, 0.18, 1.18);
@@ -2092,6 +2584,14 @@
         const feverIntensity = feverState.intensity;
         const feverBoost = 1 + feverIntensity * (reducedMotionQuery.matches ? 0.18 : 0.34);
         const drift = now * 0.00024 * backgroundMotionScale * feverBoost;
+        const nightBlend = clamp((feverIntensity - 0.08) / 0.38, 0, 1);
+
+        if (nightBlend >= 0.4) {
+          drawNightCityBackdrop(now, dynamicFx, clamp(0.66 + feverIntensity * 0.44, 0, 1.2));
+          drawFeverBackdrop(now, feverState, dynamicFx);
+          drawFeverShockwavesLayer();
+          return;
+        }
 
         const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
         sky.addColorStop(0, '#65c0ff');
@@ -2266,9 +2766,15 @@
           return;
         }
 
-        const style = getFruitStyle(o.emoji);
+        const style = getFruitStyle(o.fruitKind);
         if (style.kind === 'banana') {
           drawBanana(style, o.r);
+        } else if (style.kind === 'apple') {
+          drawApple(style, o.r);
+        } else if (style.kind === 'orange') {
+          drawOrange(style, o.r);
+        } else if (style.kind === 'peach') {
+          drawPeach(style, o.r);
         } else if (style.kind === 'strawberry') {
           drawStrawberry(style, o.r);
         } else if (style.kind === 'grape') {
@@ -2363,7 +2869,6 @@
 
           // speed multiplier (every 30 sec +10%)
           const gMul = globalSpeedMultiplier();
-          speedMulEl.textContent = `x${gMul.toFixed(2)}`;
 
           // Basket movement
           const left = keys.has('ArrowLeft') || keys.has('a') || keys.has('A');
@@ -2439,7 +2944,8 @@
               scoreEl.textContent = String(score);
 
               pop(o.x, o.y, o.color, fever ? 30 : 14);
-              addFloatText(o.x, o.y - 12, `+${got}`, fever ? '#ffd670' : o.color);
+              const scoreText = fever ? `${basePts}×2 = +${got}` : `+${got}`;
+              addFloatText(o.x, o.y - 12, scoreText, fever ? '#ffd670' : o.color);
               if (fever) triggerFeverHitFeedback(o.x, o.y, '#ffd670');
               sfx('catch');
               continue;
@@ -2455,6 +2961,7 @@
               updateHearts();
               pop(clamp(o.x, 40, canvas.width-40), canvas.height-55, '#ff4d6d', 14);
               sfx('miss');
+              triggerLifeDamageEffect();
 
               if (misses >= MAX_MISSES) {
                 endGame();
@@ -2478,36 +2985,14 @@
         drawParticles(dt);
         drawFloatTexts(dt);
 
-        // Pause label
-        if (running && paused && !gameOver) {
+        if (damageFlash > 0.001) {
+          const alpha = clamp(damageFlash, 0, 1) * (reducedMotionQuery.matches ? 0.14 : 0.2);
           ctx.save();
-          ctx.translate(canvas.width/2, canvas.height/2);
-          ctx.scale(1, drawFixScaleY);
-          ctx.globalAlpha = 0.94;
-          const panelW = Math.min(canvas.width * 0.76, 410 * pausePanelScale);
-          const panelH = Math.min(canvas.height * 0.34, 160 * pausePanelScale);
-          const corner = Math.max(18, 26 * pausePanelScale);
-
-          const panel = ctx.createLinearGradient(0, -panelH/2, 0, panelH/2);
-          panel.addColorStop(0, '#fffdf4');
-          panel.addColorStop(1, '#ffe8ba');
-          ctx.fillStyle = panel;
-          roundedRect(-panelW/2, -panelH/2, panelW, panelH, corner);
-          ctx.fill();
-
-          ctx.strokeStyle = 'rgba(255,255,255,.85)';
-          ctx.lineWidth = 2;
-          roundedRect(-panelW/2, -panelH/2, panelW, panelH, corner);
-          ctx.stroke();
-
-          ctx.fillStyle = '#21405e';
-          const pauseFontSize = Math.max(32, Math.round(44 * pausePanelScale));
-          ctx.font = `900 ${pauseFontSize}px "M PLUS Rounded 1c",sans-serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('一時停止', 0, 0);
+          ctx.fillStyle = `rgba(255,66,112,${alpha.toFixed(3)})`;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.restore();
         }
+        damageFlash = Math.max(0, damageFlash - dt * (reducedMotionQuery.matches ? 1.9 : 2.7));
 
         requestAnimationFrame(frame);
       }
