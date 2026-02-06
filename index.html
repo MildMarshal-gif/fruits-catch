@@ -834,8 +834,8 @@
 
       // Special star
       const STAR = { kind:'star', color:'#ffd670' };
-      const STAR_CHANCE_NORMAL = 0.08;
-      const STAR_CHANCE_FEVER = 0.08;
+      const STAR_CHANCE_NORMAL = 0.05;
+      const STAR_CHANCE_FEVER = 0.05;
 
       // Spawn rate & base fall speed (global progression will multiply)
       function spawnInterval() {
@@ -2923,7 +2923,7 @@
               if (o.kind === 'star') {
                 // Fever start (20s), points x2
                 fever = true;
-                feverEnd = totalElapsed + FEVER_DURATION;
+                feverEnd = Math.max(feverEnd, totalElapsed) + FEVER_DURATION;
                 setFeverPhase('enter', totalElapsed, o.x, o.y);
 
                 pop(o.x, o.y, '#ffd670', 34);
