@@ -7,23 +7,30 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800;900&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet">
 
   <style>
     :root{
-      --bg1:#7bdff2; /* sky */
-      --bg2:#b2f7ef; /* mint */
-      --bg3:#eff7f6; /* cloud */
-      --accent:#ff70a6;
-      --accent2:#ff9770;
-      --accent3:#ffd670;
-      --good:#46d19f;
-      --bad:#ff4d6d;
-      --ink:#1f2937;
-      --card:#ffffffcc;
-      --fever1:#ffd670;
-      --fever2:#9b5de5;
-      --fever3:#ff70a6;
+      --sky-top:#57b8ff;
+      --sky-mid:#9be8ff;
+      --sky-bottom:#d8ffcb;
+      --shell-ink:#203049;
+      --shell-ink-soft:#4b627f;
+      --panel:#fffdf4e8;
+      --panel-strong:#fff9ec;
+      --panel-border:#ffffffd1;
+      --shadow-soft:0 10px 24px rgba(32,48,73,.18);
+      --shadow-strong:0 24px 56px rgba(32,48,73,.28);
+      --brand-pink:#ff5ba8;
+      --brand-orange:#ff9e4d;
+      --brand-gold:#ffd36a;
+      --brand-green:#58d36b;
+      --brand-blue:#56a8ff;
+      --good:#2ecc98;
+      --bad:#ff5f78;
+      --fever-warm:#ffe38d;
+      --fever-hot:#ff8abb;
+      --fever-cool:#67b8ff;
       --ui-scale:1;
       --hud-scale:1;
       --title-scale:1;
@@ -32,42 +39,100 @@
       --basket-scale:1;
       --pause-scale:1;
       --motion-scale:1;
-      --tap-target:40px;
+      --tap-target:44px;
       --hud-inset-top:14px;
       --hud-inset-side:14px;
       --text-leading:1.35;
-      --fever-neon-a:#ffd670;
-      --fever-neon-b:#ff70a6;
-      --fever-neon-c:#9b5de5;
+      --shell-radius:32px;
     }
 
     *{ box-sizing:border-box; }
     html,body{ height:100%; margin:0; }
+
     body{
-      font-family: "M PLUS Rounded 1c","Zen Maru Gothic","Kosugi Maru","Hiragino Maru Gothic ProN",
-                   "Yu Gothic UI","Meiryo",system-ui,sans-serif;
+      font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
       display:grid;
       place-items:center;
       overflow:hidden;
+      color:var(--shell-ink);
       background:
-        radial-gradient(1200px 700px at 20% 10%, var(--bg3) 0 25%, transparent 26%),
-        radial-gradient(900px 600px at 80% 20%, var(--bg3) 0 22%, transparent 23%),
-        radial-gradient(800px 500px at 50% 0%, #ffffffaa 0 18%, transparent 19%),
-        linear-gradient(180deg, var(--bg1), var(--bg2));
+        radial-gradient(1300px 650px at -6% -8%, #ffffffc9 0 36%, transparent 37%),
+        radial-gradient(1100px 560px at 108% 6%, #fff7d9bf 0 38%, transparent 39%),
+        linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 54%, var(--sky-bottom) 100%);
+    }
+
+    body::before,
+    body::after{
+      content:"";
+      position:fixed;
+      inset:auto;
+      pointer-events:none;
+      z-index:0;
+      opacity:.45;
+      filter:blur(0.2px);
+      animation:skyDrift 16s linear infinite;
+    }
+
+    body::before{
+      width:min(44vw, 640px);
+      height:min(24vw, 340px);
+      left:-6vw;
+      top:6vh;
+      background:
+        radial-gradient(circle at 18% 44%, #ffffffd8 0 20%, transparent 21%),
+        radial-gradient(circle at 54% 50%, #ffffffda 0 26%, transparent 27%),
+        radial-gradient(circle at 82% 44%, #ffffffd2 0 20%, transparent 21%);
+    }
+
+    body::after{
+      width:min(36vw, 520px);
+      height:min(20vw, 300px);
+      right:-2vw;
+      top:14vh;
+      background:
+        radial-gradient(circle at 20% 52%, #fff7dcdd 0 22%, transparent 23%),
+        radial-gradient(circle at 56% 44%, #ffffffd1 0 28%, transparent 29%),
+        radial-gradient(circle at 86% 58%, #fffce8d8 0 18%, transparent 19%);
+      animation-duration:21s;
+      animation-direction:reverse;
     }
 
     .wrap{
-      width:min(980px, 96vw);
-      aspect-ratio: 16 / 9;
+      width:min(1060px, 96vw);
+      aspect-ratio:16 / 9;
       position:relative;
-      border-radius:24px;
-      box-shadow: 0 18px 55px rgba(0,0,0,.18);
+      z-index:1;
       overflow:hidden;
-      background: linear-gradient(180deg, rgba(255,255,255,.20), rgba(255,255,255,.05));
-      backdrop-filter: blur(8px);
+      border-radius:var(--shell-radius);
+      border:2px solid #ffffffb3;
+      box-shadow:var(--shadow-strong);
+      background:
+        linear-gradient(180deg, #ffffff54, #ffffff14),
+        linear-gradient(155deg, #fff9ec77 0%, #ffffff10 56%, #d2efff21 100%);
+      backdrop-filter:blur(8px);
     }
 
-    canvas{ width:100%; height:100%; display:block; }
+    .wrap::before{
+      content:"";
+      position:absolute;
+      inset:0;
+      background:
+        radial-gradient(66% 48% at 10% 0%, #ffffff55 0, transparent 70%),
+        radial-gradient(64% 46% at 90% 0%, #ffefbd33 0, transparent 72%),
+        repeating-linear-gradient(
+          115deg,
+          rgba(255,255,255,.065) 0 12px,
+          rgba(255,255,255,0) 12px 24px
+        );
+      mix-blend-mode:screen;
+      pointer-events:none;
+    }
+
+    canvas{
+      width:100%;
+      height:100%;
+      display:block;
+    }
 
     .hud{
       position:absolute;
@@ -78,302 +143,423 @@
         var(--hud-inset-side);
       display:grid;
       grid-template-columns:minmax(0, 1fr) auto;
-      grid-template-areas:
-        "pill btns"
-        "pill badge";
-      column-gap: calc(12px * var(--hud-scale));
-      row-gap: calc(8px * var(--hud-scale));
+      gap:calc(10px * var(--hud-scale));
       align-items:start;
       pointer-events:none;
     }
 
-    .pill{
-      background: var(--card);
-      color:var(--ink);
-      border: 2px solid rgba(255,255,255,.65);
-      border-radius:999px;
-      padding: calc(10px * var(--hud-scale)) calc(14px * var(--hud-scale));
-      display:flex;
-      gap: calc(12px * var(--hud-scale));
-      align-items:center;
-      flex-wrap:wrap;
+    .hud-main{
+      display:grid;
+      grid-template-columns:repeat(3, minmax(0, 1fr));
+      gap:calc(10px * var(--hud-scale));
       min-width:0;
-      max-width:100%;
-      font-weight:900;
-      font-size: calc(14px * var(--hud-scale));
-      line-height:1.2;
-      letter-spacing:.2px;
-      box-shadow: 0 10px 22px rgba(0,0,0,.12);
-      pointer-events:none;
-      grid-area:pill;
     }
 
-    .pill .big{ font-size: calc(18px * var(--hud-scale)); }
-    .mini{ font-size: calc(14px * var(--hud-scale)); opacity:.85; font-weight:900; }
+    .stat-card{
+      min-height:calc(74px * var(--hud-scale));
+      border-radius:20px;
+      border:2px solid var(--panel-border);
+      background:var(--panel);
+      box-shadow:var(--shadow-soft);
+      padding:calc(10px * var(--hud-scale)) calc(12px * var(--hud-scale));
+      display:grid;
+      gap:4px;
+      align-content:center;
+      min-width:0;
+    }
+
+    .stat-label{
+      font-size:calc(12px * var(--hud-scale));
+      line-height:1.1;
+      font-weight:900;
+      letter-spacing:.9px;
+      text-transform:uppercase;
+      color:var(--shell-ink-soft);
+      opacity:.9;
+    }
+
+    .stat-value{
+      display:inline-flex;
+      align-items:center;
+      gap:8px;
+      min-width:0;
+      font-weight:900;
+      line-height:1;
+      font-size:calc(30px * var(--hud-scale));
+      color:var(--shell-ink);
+    }
+
+    .speed-value{
+      font-size:calc(24px * var(--hud-scale));
+      color:#355b8a;
+    }
+
+    .score-card .stat-value{
+      color:#ff5b9c;
+      text-shadow:0 2px 0 #ffffffbb;
+    }
+
     #score{
       display:inline-block;
       min-width:2ch;
       transform-origin:center;
-      transition: transform .09s linear, text-shadow .09s linear, color .16s ease;
+      transition:transform .09s linear, text-shadow .09s linear, color .18s ease;
+      white-space:nowrap;
     }
 
     .hearts{
       display:flex;
-      gap: calc(6px * var(--hud-scale));
       align-items:center;
-      min-width: fit-content;
+      flex-wrap:nowrap;
+      gap:calc(6px * var(--hud-scale));
+      min-width:fit-content;
     }
+
     .life-heart{
-      width: calc(21px * var(--hud-scale));
-      height: calc(21px * var(--hud-scale));
-      border-radius: 8px;
-      border: 2px solid #e11d48;
-      background: #ffe4ec;
-      color: #b1133f;
+      width:calc(24px * var(--hud-scale));
+      height:calc(24px * var(--hud-scale));
+      border-radius:8px;
+      border:2px solid #e62f63;
+      background:linear-gradient(180deg, #ffd8e5, #ffc0d9);
+      color:#b61544;
       display:grid;
       place-items:center;
-      font-size: calc(13px * var(--hud-scale));
+      font-size:calc(13px * var(--hud-scale));
       line-height:1;
-      font-weight:1000;
+      font-weight:900;
+      box-shadow:0 5px 10px rgba(230,47,99,.18);
     }
+
     .life-heart.off{
-      border-color: #94a3b8;
-      background: #e2e8f0;
-      color: #64748b;
+      border-color:#93a4bd;
+      background:linear-gradient(180deg, #edf1f8, #d9e1ee);
+      color:#71839e;
+      box-shadow:none;
+    }
+
+    .hud-side{
+      display:grid;
+      gap:calc(8px * var(--hud-scale));
+      justify-items:end;
+      pointer-events:none;
     }
 
     .btns{
       display:flex;
-      gap: calc(10px * var(--hud-scale));
+      gap:calc(8px * var(--hud-scale));
       flex-wrap:wrap;
       justify-content:flex-end;
       pointer-events:auto;
-      grid-area:btns;
     }
+
     button{
       cursor:pointer;
       border:none;
       border-radius:999px;
-      min-height: var(--tap-target);
-      min-width: var(--tap-target);
-      padding: calc(10px * var(--hud-scale)) calc(14px * var(--hud-scale));
-      font-weight:900;
-      font-size: calc(14px * var(--ui-scale));
+      min-height:var(--tap-target);
+      min-width:var(--tap-target);
+      padding:calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale));
+      font-family:inherit;
+      font-size:calc(14px * var(--ui-scale));
       line-height:1.15;
-      color:#102a43;
-      background:#ffffff;
-      box-shadow: 0 10px 22px rgba(0,0,0,.12);
-      border:2px solid rgba(255,255,255,.65);
-      transition: transform .08s ease, box-shadow .15s ease;
-      font-family: inherit;
-      touch-action: manipulation;
+      font-weight:900;
+      color:var(--shell-ink);
+      background:linear-gradient(180deg, #fffef9, #ffeeda);
+      box-shadow:0 8px 18px rgba(32,48,73,.2);
+      border:2px solid #ffffffd8;
+      transition:transform .09s ease, box-shadow .15s ease, filter .15s ease;
+      touch-action:manipulation;
     }
-    button:hover{ transform: translateY(-1px); box-shadow: 0 14px 28px rgba(0,0,0,.16); }
-    button:active{ transform: translateY(1px); }
+
+    button:hover{
+      transform:translateY(-1px);
+      box-shadow:0 12px 22px rgba(32,48,73,.24);
+      filter:saturate(1.03);
+    }
+
+    button:active{ transform:translateY(1px) scale(.992); }
+
     button:focus-visible{
-      outline: 3px solid rgba(16,42,67,.7);
-      outline-offset: 2px;
+      outline:3px solid #245b99;
+      outline-offset:2px;
     }
 
     .badge{
-      background: rgba(255,255,255,.92);
-      border:2px solid rgba(255,255,255,.75);
-      box-shadow: 0 10px 22px rgba(0,0,0,.12);
-      border-radius: 16px;
-      padding: calc(10px * var(--hud-scale)) calc(12px * var(--hud-scale));
-      font-weight:1000;
-      font-size: calc(14px * var(--hud-scale));
-      line-height:1.2;
-      color:var(--ink);
       display:none;
-      max-width:min(74vw, 360px);
-      width: fit-content;
-      margin-top: calc(2px * var(--hud-scale));
-      justify-self:end;
-      align-self:start;
-      grid-area:badge;
+      align-items:center;
+      gap:8px;
+      padding:calc(10px * var(--hud-scale)) calc(12px * var(--hud-scale));
+      border-radius:14px;
+      background:var(--panel-strong);
+      border:2px solid var(--panel-border);
+      box-shadow:var(--shadow-soft);
+      font-size:calc(14px * var(--hud-scale));
+      line-height:1;
+      font-weight:900;
+      color:var(--shell-ink);
       pointer-events:none;
-    }
-    .badge.show{ display:block; }
-    .badge .line{ display:flex; align-items:center; gap:10px; }
-    .badge .spark{
-      font-size: calc(18px * var(--hud-scale));
-      filter: drop-shadow(0 2px 2px rgba(0,0,0,.12));
-    }
-    .badge.fever-neon{
-      color:#fffaf0;
-      background:
-        linear-gradient(120deg, var(--fever-neon-b), var(--fever-neon-c), var(--fever-neon-a));
-      border-color: rgba(255,255,255,.74);
-      box-shadow:
-        0 0 0 1px rgba(255,255,255,.35) inset,
-        0 0 14px rgba(255,112,166,.55),
-        0 0 24px rgba(155,93,229,.46),
-        0 14px 28px rgba(0,0,0,.2);
-      animation: badgeNeonPulse 1.2s ease-in-out infinite;
-      backdrop-filter: blur(3px);
-    }
-    .badge.fever-neon .spark{
-      filter: drop-shadow(0 0 6px rgba(255,214,112,.75));
-      animation: badgeSparkTwinkle .75s ease-in-out infinite alternate;
-    }
-    .badge.fever-neon #feverTime{
-      color:#ffffff;
-      text-shadow:
-        0 0 6px rgba(255,255,255,.8),
-        0 0 14px rgba(255,112,166,.58);
-    }
-    .badge.fever-neon[data-phase="enter"]{
-      animation-duration:0.85s;
-    }
-    .badge.fever-neon[data-phase="active"]{
-      animation-duration:1.08s;
-    }
-    .badge.fever-neon[data-phase="exit"]{
-      animation-duration:1.36s;
-      opacity:.9;
+      max-width:min(76vw, 360px);
+      width:fit-content;
     }
 
-    @keyframes badgeNeonPulse{
-      0%,100%{
-        transform: scale(1);
-        filter: saturate(1);
-      }
-      50%{
-        transform: scale(1.035);
-        filter: saturate(1.18);
-      }
+    .badge.show{ display:flex; }
+
+    .badge .spark{
+      font-size:calc(15px * var(--hud-scale));
+      color:#ff8b4a;
+      text-shadow:0 0 7px #ffed97;
     }
-    @keyframes badgeSparkTwinkle{
-      from{ transform: translateY(0); }
-      to{ transform: translateY(-1px) scale(1.08); }
+
+    .badge .badge-label{
+      text-transform:uppercase;
+      letter-spacing:.8px;
+      opacity:.85;
     }
+
+    .badge .badge-time{
+      font-size:calc(18px * var(--hud-scale));
+      color:#f25f9f;
+      min-width:4ch;
+      text-align:right;
+    }
+
+    .badge .badge-tail{
+      opacity:.7;
+      font-size:calc(12px * var(--hud-scale));
+    }
+
+    .badge.fever-neon{
+      color:#2c3158;
+      background:
+        linear-gradient(115deg, #fff8de 0%, #ffeec4 40%, #ffe0ef 75%, #d9efff 100%);
+      border-color:#fff7df;
+      box-shadow:
+        0 0 0 1px #ffffffb5 inset,
+        0 8px 20px rgba(32,48,73,.18),
+        0 0 20px rgba(255,197,132,.38);
+      animation:feverBadgePulse 1.2s ease-in-out infinite;
+    }
+
+    .badge.fever-neon .badge-time{
+      color:#ff4f95;
+      text-shadow:0 0 8px rgba(255,142,182,.55);
+    }
+
+    .badge.fever-neon[data-phase="enter"]{ animation-duration:.9s; }
+    .badge.fever-neon[data-phase="active"]{ animation-duration:1.25s; }
+    .badge.fever-neon[data-phase="exit"]{ animation-duration:1.45s; opacity:.92; }
 
     .overlay{
       position:absolute;
       inset:0;
       display:grid;
       place-items:center;
-      background: linear-gradient(180deg, rgba(0,0,0,.10), rgba(0,0,0,.22));
-      backdrop-filter: blur(6px);
+      background:
+        radial-gradient(130% 78% at 20% 0%, #ffffff50 0%, transparent 54%),
+        linear-gradient(180deg, #15305022, #15305068 80%, #10273f82);
+      backdrop-filter:blur(6px);
       opacity:0;
       pointer-events:none;
-      transition: opacity .25s ease;
+      transition:opacity .24s ease;
     }
+
     .overlay.show{ opacity:1; pointer-events:auto; }
 
     .card{
-      width:min(540px, 92%);
-      border-radius:26px;
+      width:min(600px, 92%);
+      border-radius:30px;
+      border:2px solid #ffffffde;
       padding:
-        calc(22px * var(--ui-scale))
-        calc(22px * var(--ui-scale))
+        calc(24px * var(--ui-scale))
+        calc(24px * var(--ui-scale))
         calc(18px * var(--ui-scale));
-      background: rgba(255,255,255,.92);
-      box-shadow: 0 18px 55px rgba(0,0,0,.2);
-      border: 2px solid rgba(255,255,255,.75);
+      background:
+        radial-gradient(120% 60% at 0% 0%, #ffffffd8 0%, transparent 46%),
+        linear-gradient(180deg, #fffdf4f8, #ffefd2ef 72%, #ffe5f0eb 100%);
+      box-shadow:var(--shadow-strong);
+      color:var(--shell-ink);
       text-align:center;
-      color:var(--ink);
-      line-height: var(--text-leading);
+      line-height:var(--text-leading);
+      overflow:auto;
+      max-height:calc(100% - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      -webkit-overflow-scrolling:touch;
     }
+
     .title{
-      font-size: calc(34px * var(--title-scale));
-      line-height:1.15;
-      font-weight:1000;
       margin:0 0 calc(10px * var(--ui-scale));
-      letter-spacing:.3px;
+      font-family:"Dela Gothic One","M PLUS Rounded 1c",sans-serif;
+      font-size:calc(35px * var(--title-scale));
+      line-height:1.15;
+      color:#ff4e94;
+      letter-spacing:.4px;
+      text-shadow:0 3px 0 #ffffffd6;
     }
+
     .subtitle{
       margin:0 0 calc(14px * var(--ui-scale));
-      font-size: calc(16px * var(--ui-scale));
-      line-height:1.4;
+      font-size:calc(16px * var(--ui-scale));
+      line-height:1.42;
       font-weight:900;
-      opacity:.92;
+      color:#2f4b69;
     }
+
     .how{
       margin:0 0 calc(18px * var(--ui-scale));
-      padding: calc(14px * var(--ui-scale)) calc(16px * var(--ui-scale));
-      border-radius:18px;
-      background: linear-gradient(90deg, rgba(255,112,166,.18), rgba(255,214,112,.22), rgba(70,209,159,.18));
-      border: 2px dashed rgba(31,41,55,.18);
-      font-size: calc(15px * var(--ui-scale));
+      padding:calc(14px * var(--ui-scale)) calc(16px * var(--ui-scale));
+      border-radius:20px;
+      border:2px dashed #ffca7f;
+      background:
+        linear-gradient(90deg, #ffe5f2d9 0%, #fff1d5e0 45%, #e5ffdbe0 100%);
+      font-size:calc(15px * var(--ui-scale));
       font-weight:900;
-      line-height:1.45;
+      line-height:1.52;
+      color:#29435f;
     }
+
     .stack{
       display:flex;
-      gap: calc(10px * var(--ui-scale));
-      justify-content:center;
+      gap:calc(10px * var(--ui-scale));
       flex-wrap:wrap;
-      margin-top: calc(6px * var(--ui-scale));
+      justify-content:center;
+      margin-top:calc(8px * var(--ui-scale));
     }
+
+    .stack button{
+      padding:calc(12px * var(--ui-scale)) calc(20px * var(--ui-scale));
+    }
+
+    #startBtn{
+      background:linear-gradient(100deg, #ff67ad 0%, #ffb34c 50%, #ffe479 100%);
+      color:#1f2f4b;
+    }
+
+    #soundBtn{
+      background:linear-gradient(180deg, #f2f9ff, #dff1ff);
+      color:#204463;
+    }
+
     .note{
-      font-size: calc(12px * var(--ui-scale));
-      opacity:.75;
+      font-size:calc(12px * var(--ui-scale));
       font-weight:900;
-      margin-top: calc(10px * var(--ui-scale));
-      line-height:1.4;
+      color:#496683;
+      opacity:.84;
+      margin-top:calc(10px * var(--ui-scale));
+      line-height:1.45;
     }
 
     :root[data-device="mobile"] .hud{
       grid-template-columns:1fr;
-      grid-template-areas:
-        "pill"
-        "btns"
-        "badge";
+      gap:8px;
     }
 
-    :root[data-device="mobile"] .pill{
-      width:100%;
+    :root[data-device="mobile"] .hud-main{
+      grid-template-columns:repeat(3, minmax(0,1fr));
+    }
+
+    :root[data-device="mobile"] .hud-side{
+      justify-items:stretch;
     }
 
     :root[data-device="mobile"] .btns{
-      width:100%;
       justify-content:space-between;
+      width:100%;
     }
 
     :root[data-device="mobile"] .badge{
-      justify-self:start;
+      justify-self:flex-start;
       max-width:100%;
     }
 
-    /* Responsive tweaks */
-    @media (max-width: 680px) {
-      body{
-        place-items: stretch;
-      }
-
+    @media (max-width: 980px) {
       .wrap{
-        width: 100vw;
-        height: 100dvh;        /* iPhone address bar safe */
-        aspect-ratio: auto;
-        border-radius: 0;
+        width:min(100vw, 980px);
       }
 
-      canvas{
-        width: 100%;
-        height: 100%;
+      .hud-main{
+        gap:8px;
       }
 
-      .card{
-        width: min(560px, 94vw);
-        max-height: calc(100dvh - 28px - env(safe-area-inset-top) - env(safe-area-inset-bottom));
-        overflow: auto;
-        -webkit-overflow-scrolling: touch;
+      .stat-card{
+        min-height:calc(66px * var(--hud-scale));
       }
     }
 
+    @media (max-width: 700px) {
+      body{ place-items:stretch; }
+
+      .wrap{
+        width:100vw;
+        height:100dvh;
+        aspect-ratio:auto;
+        border-radius:0;
+      }
+
+      .hud{
+        inset:
+          calc(8px + env(safe-area-inset-top))
+          8px
+          auto
+          8px;
+      }
+
+      .hud-main{
+        grid-template-columns:repeat(3, minmax(0,1fr));
+        gap:6px;
+      }
+
+      .stat-card{
+        border-radius:16px;
+        padding:8px 9px;
+      }
+
+      .stat-label{
+        font-size:11px;
+      }
+
+      .stat-value{
+        font-size:24px;
+      }
+
+      .speed-value{
+        font-size:20px;
+      }
+
+      .life-heart{
+        width:22px;
+        height:22px;
+      }
+
+      .btns button{
+        flex:1 1 calc(50% - 4px);
+      }
+
+      .card{
+        width:min(640px, 95vw);
+      }
+    }
+
+    @keyframes skyDrift{
+      0%{ transform:translateX(0px); }
+      50%{ transform:translateX(12px); }
+      100%{ transform:translateX(0px); }
+    }
+
+    @keyframes feverBadgePulse{
+      0%,100%{ transform:scale(1); filter:saturate(1); }
+      50%{ transform:scale(1.03); filter:saturate(1.12); }
+    }
+
     @media (prefers-reduced-motion: reduce) {
+      body::before,
+      body::after,
+      .badge.fever-neon{
+        animation:none !important;
+      }
+
       .overlay,
-      button{
-        transition:none;
-      }
+      button,
       #score{
-        transition: color .16s ease;
-      }
-      .badge.fever-neon,
-      .badge.fever-neon .spark{
-        animation:none;
+        transition:none;
       }
     }
   </style>
@@ -384,35 +570,43 @@
     <canvas id="game" width="1280" height="720"></canvas>
 
     <div class="hud">
-      <div class="pill">
-        <span class="big">スコア:</span>
-        <span id="score" class="big">0</span>
-        <span style="opacity:.55;">|</span>
-        <span class="big">ミス:</span>
-        <span class="hearts" id="hearts"></span>
-        <span style="opacity:.55;">|</span>
-        <span class="mini">スピード:</span>
-        <span id="speedMul" class="mini">x1.00</span>
+      <div class="hud-main">
+        <div class="stat-card score-card" aria-label="スコア">
+          <span class="stat-label">Score</span>
+          <span class="stat-value"><span id="score">0</span></span>
+        </div>
+
+        <div class="stat-card" aria-label="ライフ">
+          <span class="stat-label">Life</span>
+          <span class="stat-value">
+            <span class="hearts" id="hearts"></span>
+          </span>
+        </div>
+
+        <div class="stat-card" aria-label="スピード倍率">
+          <span class="stat-label">Speed</span>
+          <span class="stat-value speed-value" id="speedMul">x1.00</span>
+        </div>
       </div>
 
-      <div class="btns">
-        <button id="restartBtn" type="button">リスタート</button>
-        <button id="pauseBtn" type="button">一時停止</button>
-      </div>
+      <div class="hud-side">
+        <div class="btns">
+          <button id="restartBtn" type="button">リスタート</button>
+          <button id="pauseBtn" type="button">一時停止</button>
+        </div>
 
-      <div class="badge" id="feverBadge" aria-live="polite">
-        <div class="line">
-          <span class="spark">✨</span>
-          <span>フィーバー</span>
-          <span id="feverTime" style="font-weight:1000;">20.0s</span>
-          <span style="opacity:.7;">残り</span>
+        <div class="badge" id="feverBadge" aria-live="polite">
+          <span class="spark" aria-hidden="true">✦</span>
+          <span class="badge-label">Fever</span>
+          <span id="feverTime" class="badge-time">20.0s</span>
+          <span class="badge-tail">残り</span>
         </div>
       </div>
     </div>
 
     <div class="overlay show" id="overlay">
       <div class="card">
-        <h1 class="title">🍓 フルーツキャッチ</h1>
+        <h1 class="title">FRUIT CATCH</h1>
         <p class="subtitle">カゴを動かして、フルーツをキャッチしよう！</p>
         <div class="how">
           ← / → か A / D で移動<br/>
@@ -421,13 +615,10 @@
           ⭐を取るとフィーバー（得点2倍）
         </div>
         <div class="stack">
-          <button id="startBtn" type="button"
-            style="background:linear-gradient(90deg,var(--accent),var(--accent3)); color:#1f2937;">
-            スタート！
-          </button>
+          <button id="startBtn" type="button">スタート！</button>
           <button id="soundBtn" type="button">サウンド: オン</button>
         </div>
-        <div class="note">スペースキーでも一時停止できます</div>
+        <div class="note">スペースキーでも一時停止できる</div>
       </div>
     </div>
   </div>
@@ -804,13 +995,13 @@
           return;
         }
         const pulseGain = reducedMotionQuery.matches ? 0.62 : 1.0;
-        const scale = 1 + scorePulse * (hot ? 0.25 : 0.14) * pulseGain;
-        const glow = Math.round((hot ? 10 : 6) + scorePulse * (hot ? 18 : 10) * pulseGain);
+        const scale = 1 + scorePulse * (hot ? 0.22 : 0.12) * pulseGain;
+        const glow = Math.round((hot ? 10 : 6) + scorePulse * (hot ? 16 : 10) * pulseGain);
         scoreEl.style.transform = `scale(${scale.toFixed(3)})`;
         scoreEl.style.textShadow = hot
-          ? `0 0 ${glow}px rgba(255,214,112,.9), 0 0 ${Math.round(glow * 1.6)}px rgba(255,112,166,.55)`
-          : `0 0 ${glow}px rgba(255,255,255,.55)`;
-        scoreEl.style.color = hot ? '#fffaf0' : '';
+          ? `0 0 ${glow}px rgba(255,214,122,.9), 0 0 ${Math.round(glow * 1.5)}px rgba(255,103,173,.45)`
+          : `0 0 ${glow}px rgba(255,255,255,.45)`;
+        scoreEl.style.color = hot ? '#ff437e' : '';
       }
 
       function clearFeverVisualState() {
@@ -833,12 +1024,12 @@
         const count = Math.max(6, Math.round((reducedMotionQuery.matches ? 8 : 16) * density));
         for (let i=0; i<count; i++) {
           feverStreams.push({
-            lane: rand(0.16, 0.86),
+            lane: rand(0.15, 0.80),
             seed: Math.random() * 1000,
             speed: rand(0.58, 1.72),
-            len: rand(72, 196),
-            width: rand(1.5, 3.8),
-            amp: rand(8, 26),
+            len: rand(64, 172),
+            width: rand(1.2, 3.4),
+            amp: rand(6, 20),
             tone: i % 3
           });
         }
@@ -852,10 +1043,10 @@
               x, y,
               t: -i * 0.08,
               life: feverFx.enterDuration + 0.24 + i * 0.08,
-              startR: 16 + i * 12,
-              endR: Math.max(canvas.width, canvas.height) * (0.54 + i * 0.12),
-              width: 22 - i * 6,
-              color: i === 0 ? '255,255,255' : '255,214,112',
+              startR: 16 + i * 10,
+              endR: Math.max(canvas.width, canvas.height) * (0.50 + i * 0.12),
+              width: 18 - i * 5,
+              color: i === 0 ? '255,255,255' : '255,211,106',
               mode: 'expand'
             });
           }
@@ -865,9 +1056,9 @@
           x, y,
           t: 0,
           life: feverFx.exitDuration + 0.18,
-          startR: Math.max(canvas.width, canvas.height) * 0.50,
+          startR: Math.max(canvas.width, canvas.height) * 0.46,
           endR: 24,
-          width: 15,
+          width: 12,
           color: '255,255,255',
           mode: 'collapse'
         });
@@ -875,17 +1066,17 @@
 
       function spawnFeverEntrySparks(x, y) {
         const density = getRuntimeFxDensity();
-        const count = Math.max(10, Math.round((reducedMotionQuery.matches ? 16 : 34) * density));
+        const count = Math.max(10, Math.round((reducedMotionQuery.matches ? 14 : 30) * density));
         for (let i=0; i<count; i++) {
-          const angle = (Math.PI * 2 * i / count) + rand(-0.16, 0.16);
-          const speed = rand(220, 720) * (0.52 + density * 0.48);
+          const angle = (Math.PI * 2 * i / count) + rand(-0.18, 0.18);
+          const speed = rand(210, 640) * (0.52 + density * 0.48);
           feverSparks.push({
             x, y,
             vx: Math.cos(angle) * speed,
-            vy: Math.sin(angle) * speed - rand(10, 70),
+            vy: Math.sin(angle) * speed - rand(10, 56),
             t: 0,
-            life: rand(0.36, 0.84),
-            size: rand(2.2, 5.4),
+            life: rand(0.34, 0.82),
+            size: rand(2.0, 5.0),
             tone: i % 3,
             mode: 'burst'
           });
@@ -894,9 +1085,9 @@
 
       function spawnFeverExitConverge() {
         const cx = canvas.width * 0.5;
-        const cy = canvas.height * 0.36;
+        const cy = canvas.height * 0.32;
         const density = getRuntimeFxDensity();
-        const count = Math.max(8, Math.round((reducedMotionQuery.matches ? 12 : 24) * density));
+        const count = Math.max(8, Math.round((reducedMotionQuery.matches ? 12 : 22) * density));
         for (let i=0; i<count; i++) {
           const edge = i % 4;
           let x = 0;
@@ -915,7 +1106,7 @@
             vy: (dy / dist) * speed,
             t: 0,
             life: rand(0.46, 0.82),
-            size: rand(1.8, 4.5),
+            size: rand(1.8, 4.1),
             tone: i % 3,
             mode: 'converge'
           });
@@ -930,23 +1121,23 @@
           color,
           t: 0,
           life: burstLife,
-          r0: 12,
-          r1: 68
+          r0: 10,
+          r1: 58
         });
-        feverFx.hitPulse = clamp(feverFx.hitPulse + (reducedMotionQuery.matches ? 0.24 : 0.42), 0, 1.25);
-        scorePulse = clamp(scorePulse + (fever ? 0.82 : 0.46), 0, 1.35);
+        feverFx.hitPulse = clamp(feverFx.hitPulse + (reducedMotionQuery.matches ? 0.24 : 0.38), 0, 1.25);
+        scorePulse = clamp(scorePulse + (fever ? 0.78 : 0.44), 0, 1.35);
 
         const sparkCount = Math.max(4, Math.round((reducedMotionQuery.matches ? 4 : 10) * density));
         for (let i=0; i<sparkCount; i++) {
           const angle = (Math.PI * 2 * i / sparkCount) + rand(-0.24, 0.24);
-          const speed = rand(120, 360);
+          const speed = rand(120, 340);
           feverSparks.push({
             x, y,
             vx: Math.cos(angle) * speed,
             vy: Math.sin(angle) * speed,
             t: 0,
-            life: rand(0.16, 0.36),
-            size: rand(1.4, 3.4),
+            life: rand(0.16, 0.34),
+            size: rand(1.2, 3.2),
             tone: i % 3,
             mode: 'hit'
           });
@@ -961,8 +1152,8 @@
           feverFx.exitDuration = reducedMotionQuery.matches ? 0.44 : FEVER_EXIT_DURATION;
           feverFx.originX = originX;
           feverFx.originY = originY;
-          feverFx.flash = reducedMotionQuery.matches ? 0.32 : 1.0;
-          feverFx.hitPulse = reducedMotionQuery.matches ? 0.28 : 0.62;
+          feverFx.flash = reducedMotionQuery.matches ? 0.26 : 0.78;
+          feverFx.hitPulse = reducedMotionQuery.matches ? 0.26 : 0.52;
           feverBadge.classList.add('show', 'fever-neon');
           feverBadge.dataset.phase = 'enter';
           spawnFeverShockwave(originX, originY, 'entry');
@@ -979,11 +1170,11 @@
         if (nextPhase === 'exit') {
           feverFx.phase = 'exit';
           feverFx.phaseStart = nowSec;
-          feverFx.flash = Math.max(feverFx.flash, reducedMotionQuery.matches ? 0.22 : 0.45);
-          feverFx.hitPulse = Math.max(feverFx.hitPulse, reducedMotionQuery.matches ? 0.2 : 0.38);
+          feverFx.flash = Math.max(feverFx.flash, reducedMotionQuery.matches ? 0.18 : 0.34);
+          feverFx.hitPulse = Math.max(feverFx.hitPulse, reducedMotionQuery.matches ? 0.2 : 0.32);
           feverBadge.classList.add('show', 'fever-neon');
           feverBadge.dataset.phase = 'exit';
-          spawnFeverShockwave(canvas.width * 0.5, canvas.height * 0.34, 'exit');
+          spawnFeverShockwave(canvas.width * 0.5, canvas.height * 0.32, 'exit');
           spawnFeverExitConverge();
           return;
         }
@@ -1002,15 +1193,15 @@
         }
         if (feverFx.phase === 'enter') {
           const t = clamp((nowSec - feverFx.phaseStart) / feverFx.enterDuration, 0, 1);
-          const intensity = clamp(0.56 + easeOutCubic(t) * 0.68 + feverFx.hitPulse * 0.22, 0, 1.35);
+          const intensity = clamp(0.48 + easeOutCubic(t) * 0.56 + feverFx.hitPulse * 0.22, 0, 1.24);
           return { phase:'enter', intensity, enterT:t, exitT:0 };
         }
         if (feverFx.phase === 'active') {
-          const intensity = clamp(1 + feverFx.hitPulse * 0.24, 0, 1.35);
+          const intensity = clamp(0.88 + feverFx.hitPulse * 0.22, 0, 1.22);
           return { phase:'active', intensity, enterT:1, exitT:0 };
         }
         const t = clamp((nowSec - feverFx.phaseStart) / feverFx.exitDuration, 0, 1);
-        const intensity = clamp((1 - easeInCubic(t)) + feverFx.hitPulse * 0.18, 0, 1.1);
+        const intensity = clamp((0.92 - easeInCubic(t) * 0.92) + feverFx.hitPulse * 0.16, 0, 1.0);
         return { phase:'exit', intensity, enterT:1, exitT:t };
       }
 
@@ -1019,9 +1210,9 @@
         runtimeFxQuality += (targetQuality - runtimeFxQuality) * Math.min(1, dt * 4.2);
         runtimeFxQuality = clamp(runtimeFxQuality, 0.58, 1.0);
 
-        scorePulse = Math.max(0, scorePulse - dt * (reducedMotionQuery.matches ? 4.1 : 6.4));
-        feverFx.hitPulse = Math.max(0, feverFx.hitPulse - dt * (reducedMotionQuery.matches ? 2.8 : 4.6));
-        feverFx.flash = Math.max(0, feverFx.flash - dt * (reducedMotionQuery.matches ? 1.8 : 2.8));
+        scorePulse = Math.max(0, scorePulse - dt * (reducedMotionQuery.matches ? 4.1 : 6.1));
+        feverFx.hitPulse = Math.max(0, feverFx.hitPulse - dt * (reducedMotionQuery.matches ? 2.7 : 4.4));
+        feverFx.flash = Math.max(0, feverFx.flash - dt * (reducedMotionQuery.matches ? 1.7 : 2.6));
 
         const state = getFeverVisualState(totalElapsed);
         if (feverFx.phase === 'enter' && state.enterT >= 1) {
@@ -1134,8 +1325,8 @@
         const fx = clamp(preset.fxDensity * dprFxPenalty * reducedFxMul, 0.18, 1.00);
         const pauseScale = clamp(preset.pauseScale * motionScale, 0.62, 1.02);
         const tapTargetPx = Math.max(preset.tapTarget, coarsePointer ? 44 : preset.tapTarget);
-        const hudTop = width <= 680 ? 20 : 14;
-        const hudSide = width <= 680 ? 10 : 14;
+        const hudTop = width <= 700 ? 10 : 14;
+        const hudSide = width <= 700 ? 8 : 14;
 
         root.dataset.device = deviceType;
         root.dataset.motion = reducedMotion ? 'reduced' : 'full';
@@ -1216,7 +1407,7 @@
       }
 
       function resetOverlayTextToStart() {
-        overlay.querySelector('.title').textContent = '🍓 フルーツキャッチ';
+        overlay.querySelector('.title').textContent = 'FRUIT CATCH';
         overlay.querySelector('.subtitle').textContent = 'カゴを動かして、フルーツをキャッチしよう！';
         overlay.querySelector('.how').innerHTML =
           `← / → か A / D で移動<br/>
@@ -1408,22 +1599,324 @@
         ctx.closePath();
       }
 
+      function drawStarPath(outerR, innerR = outerR * 0.48) {
+        ctx.beginPath();
+        for (let i=0; i<10; i++) {
+          const angle = -Math.PI / 2 + i * Math.PI / 5;
+          const rr = (i % 2 === 0) ? outerR : innerR;
+          const px = Math.cos(angle) * rr;
+          const py = Math.sin(angle) * rr;
+          if (i === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+      }
+
+      function getFruitStyle(emoji) {
+        switch (emoji) {
+          case '🍌':
+            return {
+              kind: 'banana',
+              base: '#ffd54f',
+              shade: '#f4b731',
+              highlight: '#fff2a8',
+              stem: '#9c6b24',
+              seed: '#f1a83a',
+              leaf: '#64bf4f'
+            };
+          case '🍏':
+            return {
+              kind: 'round',
+              base: '#7fe14e',
+              shade: '#54ba38',
+              highlight: '#d3ffae',
+              stem: '#6b4021',
+              leaf: '#5cae45',
+              accent: '#a5ec6e'
+            };
+          case '🍎':
+            return {
+              kind: 'round',
+              base: '#ff5b5b',
+              shade: '#cf3347',
+              highlight: '#ffb5b1',
+              stem: '#6b4021',
+              leaf: '#5bae45',
+              accent: '#ff8a8a'
+            };
+          case '🍑':
+            return {
+              kind: 'round',
+              base: '#ffae75',
+              shade: '#ff7f6d',
+              highlight: '#ffe0b2',
+              stem: '#6a3f1f',
+              leaf: '#71be54',
+              accent: '#ffbf8f'
+            };
+          case '🍓':
+            return {
+              kind: 'strawberry',
+              base: '#ff5a8f',
+              shade: '#d93265',
+              highlight: '#ff9dbd',
+              stem: '#6f3f1f',
+              leaf: '#63bf53',
+              seed: '#ffe9b5'
+            };
+          case '🍇':
+            return {
+              kind: 'grape',
+              base: '#9f7af6',
+              shade: '#7448ca',
+              highlight: '#ccb6ff',
+              stem: '#6f3f1f',
+              leaf: '#63bc53',
+              seed: '#d7c2ff'
+            };
+          case '🍉':
+            return {
+              kind: 'watermelon',
+              base: '#56d48a',
+              shade: '#36a95f',
+              highlight: '#9bf2bb',
+              stem: '#6f3f1f',
+              leaf: '#63bc53',
+              seed: '#222334'
+            };
+          default:
+            return {
+              kind: 'round',
+              base: '#ff8ab8',
+              shade: '#dd4f86',
+              highlight: '#ffd5e7',
+              stem: '#6a3f1f',
+              leaf: '#6bbb57',
+              accent: '#ffb1cf'
+            };
+        }
+      }
+
+      function drawRoundFruit(style, r) {
+        const body = ctx.createRadialGradient(-r*0.36, -r*0.45, r*0.15, 0, 0, r*1.15);
+        body.addColorStop(0, style.highlight);
+        body.addColorStop(0.58, style.base);
+        body.addColorStop(1, style.shade);
+        ctx.fillStyle = body;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,255,255,.35)';
+        ctx.lineWidth = Math.max(1.6, r * 0.08);
+        ctx.stroke();
+
+        ctx.fillStyle = 'rgba(255,255,255,.34)';
+        ctx.beginPath();
+        ctx.ellipse(-r*0.34, -r*0.38, r*0.24, r*0.14, -0.6, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.strokeStyle = style.stem;
+        ctx.lineWidth = Math.max(2, r * 0.12);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(-r*0.04, -r*0.88);
+        ctx.quadraticCurveTo(0, -r*1.12, r*0.1, -r*0.96);
+        ctx.stroke();
+
+        ctx.fillStyle = style.leaf;
+        ctx.beginPath();
+        ctx.moveTo(r*0.02, -r*0.92);
+        ctx.quadraticCurveTo(r*0.34, -r*1.06, r*0.36, -r*0.78);
+        ctx.quadraticCurveTo(r*0.18, -r*0.68, r*0.02, -r*0.92);
+        ctx.fill();
+      }
+
+      function drawBanana(style, r) {
+        ctx.rotate(-0.42);
+
+        ctx.strokeStyle = style.shade;
+        ctx.lineWidth = r * 0.54;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.78, Math.PI * 0.2, Math.PI * 1.1);
+        ctx.stroke();
+
+        const strip = ctx.createLinearGradient(-r, -r, r, r);
+        strip.addColorStop(0, style.highlight);
+        strip.addColorStop(0.55, style.base);
+        strip.addColorStop(1, style.shade);
+        ctx.strokeStyle = strip;
+        ctx.lineWidth = r * 0.34;
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.78, Math.PI * 0.2, Math.PI * 1.1);
+        ctx.stroke();
+
+        ctx.fillStyle = style.stem;
+        ctx.beginPath();
+        ctx.arc(-r*0.70, r*0.20, r*0.09, 0, Math.PI * 2);
+        ctx.arc(r*0.36, -r*0.74, r*0.09, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      function drawStrawberry(style, r) {
+        const body = ctx.createRadialGradient(-r*0.3, -r*0.48, r*0.12, 0, 0, r*1.08);
+        body.addColorStop(0, style.highlight);
+        body.addColorStop(0.6, style.base);
+        body.addColorStop(1, style.shade);
+        ctx.fillStyle = body;
+
+        ctx.beginPath();
+        ctx.moveTo(0, -r*0.95);
+        ctx.bezierCurveTo(r*0.86, -r*0.82, r*0.9, r*0.24, 0, r*0.98);
+        ctx.bezierCurveTo(-r*0.9, r*0.24, -r*0.86, -r*0.82, 0, -r*0.95);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.strokeStyle = 'rgba(255,255,255,.3)';
+        ctx.lineWidth = Math.max(1.2, r * 0.07);
+        ctx.stroke();
+
+        const seeds = Math.max(10, Math.round(r * 0.33));
+        ctx.fillStyle = style.seed;
+        for (let i=0; i<seeds; i++) {
+          const ang = (Math.PI * 2 * i / seeds) + (i % 2 ? 0.14 : -0.1);
+          const rr = r * rand(0.28, 0.74);
+          const sx = Math.cos(ang) * rr * 0.9;
+          const sy = Math.sin(ang) * rr * 1.05 + r * 0.08;
+          ctx.beginPath();
+          ctx.ellipse(sx, sy, r*0.05, r*0.03, ang, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        ctx.fillStyle = style.leaf;
+        for (let i=0; i<5; i++) {
+          const a = -Math.PI * 0.84 + i * (Math.PI * 0.17);
+          ctx.beginPath();
+          ctx.moveTo(0, -r*0.72);
+          ctx.quadraticCurveTo(
+            Math.cos(a) * r * 0.36,
+            -r*1.12 + Math.sin(a) * r * 0.08,
+            Math.cos(a) * r * 0.18,
+            -r*0.72
+          );
+          ctx.fill();
+        }
+      }
+
+      function drawGrape(style, r) {
+        const bubbles = [
+          {x:0, y:r*0.04, s:0.46},
+          {x:-r*0.34, y:r*0.08, s:0.34},
+          {x:r*0.34, y:r*0.08, s:0.34},
+          {x:-r*0.20, y:-r*0.24, s:0.32},
+          {x:r*0.20, y:-r*0.24, s:0.32},
+          {x:0, y:-r*0.42, s:0.31}
+        ];
+
+        for (let i=0; i<bubbles.length; i++) {
+          const b = bubbles[i];
+          const rr = r * b.s;
+          const g = ctx.createRadialGradient(
+            b.x - rr * 0.3,
+            b.y - rr * 0.35,
+            rr * 0.12,
+            b.x,
+            b.y,
+            rr * 1.1
+          );
+          g.addColorStop(0, style.highlight);
+          g.addColorStop(0.6, style.base);
+          g.addColorStop(1, style.shade);
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(b.x, b.y, rr, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.strokeStyle = 'rgba(255,255,255,.24)';
+          ctx.lineWidth = Math.max(1, rr * 0.12);
+          ctx.stroke();
+        }
+
+        ctx.strokeStyle = style.stem;
+        ctx.lineWidth = Math.max(2, r * 0.11);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(0, -r*0.88);
+        ctx.quadraticCurveTo(r*0.06, -r*1.08, r*0.2, -r*0.92);
+        ctx.stroke();
+
+        ctx.fillStyle = style.leaf;
+        ctx.beginPath();
+        ctx.moveTo(r*0.1, -r*0.86);
+        ctx.quadraticCurveTo(r*0.46, -r*1.0, r*0.42, -r*0.72);
+        ctx.quadraticCurveTo(r*0.20, -r*0.62, r*0.1, -r*0.86);
+        ctx.fill();
+      }
+
+      function drawWatermelon(style, r) {
+        const body = ctx.createRadialGradient(-r*0.34, -r*0.44, r*0.12, 0, 0, r*1.1);
+        body.addColorStop(0, style.highlight);
+        body.addColorStop(0.58, style.base);
+        body.addColorStop(1, style.shade);
+        ctx.fillStyle = body;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
+        ctx.clip();
+
+        ctx.strokeStyle = 'rgba(26,128,63,.45)';
+        ctx.lineWidth = Math.max(2, r * 0.12);
+        for (let i=-2; i<=2; i++) {
+          ctx.beginPath();
+          ctx.moveTo(i * r * 0.34, -r * 0.9);
+          ctx.quadraticCurveTo(i * r * 0.20, 0, i * r * 0.34, r * 0.9);
+          ctx.stroke();
+        }
+        ctx.restore();
+
+        ctx.strokeStyle = '#f5ffe5';
+        ctx.lineWidth = Math.max(2, r * 0.1);
+        ctx.beginPath();
+        ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.fillStyle = style.seed;
+        const seedCount = 6;
+        for (let i=0; i<seedCount; i++) {
+          const a = -Math.PI * 0.88 + i * (Math.PI * 0.35);
+          const rr = r * (0.32 + (i % 2) * 0.14);
+          ctx.save();
+          ctx.translate(Math.cos(a) * rr, Math.sin(a) * rr);
+          ctx.rotate(a + Math.PI / 2);
+          ctx.beginPath();
+          ctx.moveTo(0, -r*0.06);
+          ctx.quadraticCurveTo(r*0.05, 0, 0, r*0.09);
+          ctx.quadraticCurveTo(-r*0.05, 0, 0, -r*0.06);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
+
       function drawFeverBackdrop(now, feverState, dynamicFx) {
         if (feverState.intensity <= 0.001) return;
         const intensity = feverState.intensity;
-        const pulseFreq = reducedMotionQuery.matches ? 0.0045 : 0.0078;
-        const pulse = 0.5 + 0.5 * Math.sin(now * pulseFreq * backgroundMotionScale + feverFx.hitPulse * 2.2);
+        const pulseFreq = reducedMotionQuery.matches ? 0.0043 : 0.0064;
+        const pulse = 0.5 + 0.5 * Math.sin(now * pulseFreq * backgroundMotionScale + feverFx.hitPulse * 2.0);
         const centerX = feverFx.phase === 'enter' ? feverFx.originX : canvas.width * 0.5;
         const centerY = feverFx.phase === 'enter' ? feverFx.originY : canvas.height * 0.34;
-        const auraScale = feverState.phase === 'exit' ? (1.08 - feverState.exitT * 0.24) : (1.0 + pulse * 0.18);
 
         ctx.save();
-        const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
-        g.addColorStop(0, 'rgba(255,214,112,.76)');
-        g.addColorStop(0.42, 'rgba(255,112,166,.72)');
-        g.addColorStop(1, 'rgba(155,93,229,.70)');
-        ctx.globalAlpha = (0.20 + pulse * 0.24) * intensity;
-        ctx.fillStyle = g;
+        const warmWash = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        warmWash.addColorStop(0, 'rgba(255,227,141,.56)');
+        warmWash.addColorStop(0.55, 'rgba(255,138,187,.44)');
+        warmWash.addColorStop(1, 'rgba(103,184,255,.38)');
+        ctx.globalAlpha = (0.10 + pulse * 0.10) * intensity;
+        ctx.fillStyle = warmWash;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
 
@@ -1434,32 +1927,33 @@
           Math.max(24, canvas.width * 0.03),
           centerX,
           centerY,
-          canvas.width * 0.64 * auraScale
+          canvas.width * 0.52
         );
-        aura.addColorStop(0, 'rgba(255,255,255,0.75)');
-        aura.addColorStop(0.24, 'rgba(255,214,112,0.52)');
-        aura.addColorStop(0.58, 'rgba(255,112,166,0.30)');
-        aura.addColorStop(1, 'rgba(155,93,229,0)');
-        ctx.globalAlpha = (0.26 + pulse * 0.20) * intensity;
+        aura.addColorStop(0, 'rgba(255,255,255,0.62)');
+        aura.addColorStop(0.24, 'rgba(255,235,175,0.42)');
+        aura.addColorStop(0.56, 'rgba(255,145,190,0.22)');
+        aura.addColorStop(1, 'rgba(103,184,255,0)');
+        ctx.globalAlpha = (0.14 + pulse * 0.12) * intensity;
         ctx.fillStyle = aura;
         ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.restore();
 
-        const streamAlpha = Math.min(0.52, (0.12 + intensity * 0.22) * (0.5 + dynamicFx * 0.5));
+        const streamAlpha = Math.min(0.34, (0.08 + intensity * 0.16) * (0.5 + dynamicFx * 0.5));
         if (streamAlpha > 0.01 && feverStreams.length) {
+          const tones = ['#ffe18e', '#ff8bbb', '#7ec3ff'];
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
           for (let i=0; i<feverStreams.length; i++) {
             const s = feverStreams[i];
-            const travel = ((now * 0.001 * (100 + s.speed * 95) * backgroundMotionScale) + s.seed * 0.73) % (canvas.width + s.len * 2);
+            const travel = ((now * 0.001 * (92 + s.speed * 86) * backgroundMotionScale) + s.seed * 0.73) % (canvas.width + s.len * 2);
             const x = travel - s.len;
-            const y = canvas.height * s.lane + Math.sin(now * 0.0018 * s.speed + s.seed) * s.amp * (0.22 + intensity * 0.78);
-            ctx.globalAlpha = streamAlpha * (0.65 + (s.tone % 3) * 0.18);
-            ctx.strokeStyle = s.tone === 0 ? '#ffd670' : s.tone === 1 ? '#ff70a6' : '#ffffff';
-            ctx.lineWidth = s.width * (0.72 + intensity * 0.42);
+            const y = canvas.height * s.lane + Math.sin(now * 0.0016 * s.speed + s.seed) * s.amp * (0.2 + intensity * 0.8);
+            ctx.globalAlpha = streamAlpha * (0.6 + (s.tone % 3) * 0.14);
+            ctx.strokeStyle = tones[s.tone % tones.length];
+            ctx.lineWidth = s.width * (0.68 + intensity * 0.34);
             ctx.beginPath();
             ctx.moveTo(x, y);
-            ctx.lineTo(x + s.len, y - s.amp * 0.24);
+            ctx.lineTo(x + s.len, y - s.amp * 0.2);
             ctx.stroke();
           }
           ctx.restore();
@@ -1467,8 +1961,8 @@
 
         if (feverFx.flash > 0.001) {
           ctx.save();
-          ctx.globalAlpha = feverFx.flash * (reducedMotionQuery.matches ? 0.24 : 0.38);
-          ctx.fillStyle = '#ffffff';
+          ctx.globalAlpha = feverFx.flash * (reducedMotionQuery.matches ? 0.14 : 0.26);
+          ctx.fillStyle = '#fff9ef';
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.restore();
         }
@@ -1484,11 +1978,11 @@
           const p = clamp(w.t / w.life, 0, 1);
           const k = w.mode === 'collapse' ? easeInCubic(p) : easeOutCubic(p);
           const radius = w.startR + (w.endR - w.startR) * k;
-          const alpha = (1 - p) * (w.mode === 'collapse' ? 0.58 : 0.72) * (0.45 + density * 0.55);
+          const alpha = (1 - p) * (w.mode === 'collapse' ? 0.46 : 0.58) * (0.45 + density * 0.55);
           if (alpha <= 0.01) continue;
           ctx.globalAlpha = alpha;
           ctx.strokeStyle = `rgba(${w.color}, 1)`;
-          ctx.lineWidth = Math.max(1.6, w.width * (1 - p * 0.78));
+          ctx.lineWidth = Math.max(1.4, w.width * (1 - p * 0.78));
           ctx.beginPath();
           ctx.arc(w.x, w.y, radius, 0, Math.PI * 2);
           ctx.stroke();
@@ -1498,25 +1992,25 @@
 
       function drawFeverSparkLayer() {
         if (!feverSparks.length) return;
-        const toneColor = ['#ffd670', '#ff70a6', '#ffffff'];
+        const toneColor = ['#ffe18f', '#ff8cbf', '#8bc9ff'];
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         for (const s of feverSparks) {
           const lifeK = 1 - (s.t / s.life);
           if (lifeK <= 0) continue;
-          const trail = s.mode === 'converge' ? 0.022 : 0.032;
+          const trail = s.mode === 'converge' ? 0.020 : 0.03;
           const px = s.x - s.vx * trail;
           const py = s.y - s.vy * trail;
-          ctx.globalAlpha = lifeK * (s.mode === 'hit' ? 0.95 : 0.82);
+          ctx.globalAlpha = lifeK * (s.mode === 'hit' ? 0.88 : 0.76);
           ctx.strokeStyle = toneColor[s.tone % toneColor.length];
-          ctx.lineWidth = Math.max(1.2, s.size * lifeK);
+          ctx.lineWidth = Math.max(1.1, s.size * lifeK);
           ctx.beginPath();
           ctx.moveTo(px, py);
           ctx.lineTo(s.x, s.y);
           ctx.stroke();
           if (s.mode === 'hit') {
             ctx.beginPath();
-            ctx.arc(s.x, s.y, s.size * lifeK * 0.8, 0, Math.PI * 2);
+            ctx.arc(s.x, s.y, s.size * lifeK * 0.75, 0, Math.PI * 2);
             ctx.fillStyle = toneColor[s.tone % toneColor.length];
             ctx.fill();
           }
@@ -1533,15 +2027,15 @@
           const lifeK = 1 - p;
           if (lifeK <= 0) continue;
           const ringR = hb.r0 + (hb.r1 - hb.r0) * easeOutCubic(p);
-          ctx.globalAlpha = lifeK * 0.78;
+          ctx.globalAlpha = lifeK * 0.66;
           ctx.strokeStyle = hb.color;
-          ctx.lineWidth = Math.max(1.6, 8 * lifeK);
+          ctx.lineWidth = Math.max(1.2, 7 * lifeK);
           ctx.beginPath();
           ctx.arc(hb.x, hb.y, ringR, 0, Math.PI * 2);
           ctx.stroke();
 
-          const cross = 8 + ringR * 0.28;
-          ctx.lineWidth = Math.max(1.2, 5 * lifeK);
+          const cross = 6 + ringR * 0.24;
+          ctx.lineWidth = Math.max(1.0, 4 * lifeK);
           ctx.beginPath();
           ctx.moveTo(hb.x - cross, hb.y);
           ctx.lineTo(hb.x + cross, hb.y);
@@ -1552,54 +2046,117 @@
         ctx.restore();
       }
 
-      function drawBackground() {
-        const now = performance.now();
-        const dynamicFx = clamp(fxDensity * runtimeFxQuality, 0.18, 1.18);
-        const feverState = getFeverVisualState(totalElapsed);
-        const feverIntensity = feverState.intensity;
-        const feverBoost = 1 + feverIntensity * (reducedMotionQuery.matches ? 0.28 : 0.55);
-        const t = now * 0.0002 * backgroundMotionScale * feverBoost;
-        const hillStep = Math.max(40, Math.round(56 / Math.max(0.35, dynamicFx)));
-        const confettiCount = Math.max(6, Math.round((20 + feverIntensity * 22) * dynamicFx));
-
-        drawFeverBackdrop(now, feverState, dynamicFx);
-
-        // Soft hills
+      function drawParallaxCloudLayer(now, dynamicFx, feverIntensity) {
+        const cloudCount = Math.max(4, Math.round((6 + dynamicFx * 4) * (reducedMotionQuery.matches ? 0.7 : 1)));
+        const tone = feverIntensity > 0.06 ? '#fff7eb' : '#ffffff';
         ctx.save();
-        ctx.globalAlpha = 0.25 + feverIntensity * 0.08;
-        ctx.fillStyle = feverIntensity > 0.08 ? '#fff8ff' : '#ffffff';
-        ctx.beginPath();
-        ctx.moveTo(0, canvas.height);
-        for (let x=0; x<=canvas.width; x+=hillStep){
-          const y = canvas.height - 80 - Math.sin(x*0.008 + t*3) * (16 + feverIntensity * 12);
-          ctx.lineTo(x, y);
-        }
-        ctx.lineTo(canvas.width, canvas.height);
-        ctx.closePath();
-        ctx.fill();
+        for (let i=0; i<cloudCount; i++) {
+          const speed = 9 + i * 2.8;
+          const travel = ((now * 0.010 * speed * backgroundMotionScale) + i * 230) % (canvas.width + 300);
+          const x = travel - 150;
+          const y = canvas.height * (0.09 + (i % 4) * 0.065) + Math.sin(now * 0.00045 + i) * 10;
+          const w = 90 + (i % 3) * 28;
+          const h = 30 + (i % 2) * 10;
 
-        ctx.globalAlpha = 0.18 + feverIntensity * 0.08;
+          ctx.globalAlpha = (0.20 + (i % 3) * 0.06) * (0.7 + dynamicFx * 0.3);
+          ctx.fillStyle = tone;
+          ctx.beginPath();
+          ctx.ellipse(x, y, w * 0.46, h * 0.5, 0, 0, Math.PI * 2);
+          ctx.ellipse(x + w * 0.24, y - h * 0.16, w * 0.34, h * 0.42, 0, 0, Math.PI * 2);
+          ctx.ellipse(x - w * 0.24, y - h * 0.10, w * 0.30, h * 0.38, 0, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.restore();
+      }
+
+      function drawTerrainLayer(baseY, amp, step, color, alpha, phase) {
+        ctx.save();
+        ctx.globalAlpha = alpha;
+        ctx.fillStyle = color;
         ctx.beginPath();
         ctx.moveTo(0, canvas.height);
-        for (let x=0; x<=canvas.width; x+=hillStep){
-          const y = canvas.height - 35 - Math.sin(x*0.01 + t*2) * (11 + feverIntensity * 8);
+        for (let x=0; x<=canvas.width + step; x+=step) {
+          const y = baseY + Math.sin(x * 0.006 + phase) * amp + Math.sin(x * 0.013 + phase * 1.2) * amp * 0.42;
           ctx.lineTo(x, y);
         }
         ctx.lineTo(canvas.width, canvas.height);
         ctx.closePath();
         ctx.fill();
         ctx.restore();
+      }
 
-        // Confetti dots
+      function drawBackground() {
+        const now = performance.now();
+        const dynamicFx = clamp(fxDensity * runtimeFxQuality, 0.18, 1.18);
+        const feverState = getFeverVisualState(totalElapsed);
+        const feverIntensity = feverState.intensity;
+        const feverBoost = 1 + feverIntensity * (reducedMotionQuery.matches ? 0.18 : 0.34);
+        const drift = now * 0.00024 * backgroundMotionScale * feverBoost;
+
+        const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        sky.addColorStop(0, '#65c0ff');
+        sky.addColorStop(0.5, '#a9ecff');
+        sky.addColorStop(1, '#dbffc9');
+        ctx.fillStyle = sky;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
         ctx.save();
-        ctx.globalAlpha = (0.21 + feverIntensity * 0.2) * (0.45 + dynamicFx * 0.55);
-        for (let i=0;i<confettiCount;i++){
-          const speed = (0.05 + feverIntensity * 0.05) * backgroundMotionScale;
-          const x = (i * 97 + (now * speed)) % canvas.width;
-          const y = 90 + (i * 53) % Math.max(220, Math.round(320 * (0.65 + dynamicFx * 0.35)));
+        const sun = ctx.createRadialGradient(
+          canvas.width * 0.82,
+          canvas.height * 0.12,
+          10,
+          canvas.width * 0.82,
+          canvas.height * 0.12,
+          canvas.width * 0.16
+        );
+        sun.addColorStop(0, 'rgba(255,255,245,0.95)');
+        sun.addColorStop(0.45, 'rgba(255,240,174,0.55)');
+        sun.addColorStop(1, 'rgba(255,220,131,0)');
+        ctx.globalAlpha = 0.55 + feverIntensity * 0.15;
+        ctx.fillStyle = sun;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+
+        drawParallaxCloudLayer(now, dynamicFx, feverIntensity);
+        drawFeverBackdrop(now, feverState, dynamicFx);
+
+        drawTerrainLayer(
+          canvas.height * (0.72 - feverIntensity * 0.02),
+          24 + feverIntensity * 8,
+          72,
+          '#9fdfa3',
+          0.62,
+          drift * 0.84
+        );
+
+        drawTerrainLayer(
+          canvas.height * (0.82 - feverIntensity * 0.012),
+          18 + feverIntensity * 7,
+          64,
+          '#7fce7e',
+          0.74,
+          drift * 1.06 + 1.2
+        );
+
+        drawTerrainLayer(
+          canvas.height * (0.90 - feverIntensity * 0.006),
+          14 + feverIntensity * 5,
+          56,
+          '#63b95b',
+          0.92,
+          drift * 1.3 + 2.2
+        );
+
+        const moteCount = Math.max(6, Math.round((14 + feverIntensity * 12) * dynamicFx));
+        ctx.save();
+        ctx.globalAlpha = (0.18 + feverIntensity * 0.12) * (0.46 + dynamicFx * 0.54);
+        for (let i=0; i<moteCount; i++) {
+          const speed = (0.04 + feverIntensity * 0.04) * backgroundMotionScale;
+          const x = (i * 137 + (now * speed)) % canvas.width;
+          const y = 84 + (i * 49) % Math.max(180, Math.round(330 * (0.62 + dynamicFx * 0.38)));
           ctx.beginPath();
-          ctx.arc(x, y, (3 + (i % 4)) * (0.75 + dynamicFx * 0.3), 0, Math.PI*2);
-          ctx.fillStyle = ['#ff70a6','#ffd670','#46d19f','#9b5de5','#ff9770','#ffffff'][i % 6];
+          ctx.arc(x, y, (2 + (i % 3)) * (0.75 + dynamicFx * 0.25), 0, Math.PI*2);
+          ctx.fillStyle = ['#ff8eb9','#ffe18f','#8bd7ff','#b8ff9b','#ffffff'][i % 5];
           ctx.fill();
         }
         ctx.restore();
@@ -1617,41 +2174,57 @@
         ctx.translate(x, y);
         ctx.scale(1, drawFixScaleY);
 
-        // Body
-        ctx.fillStyle = '#ffffff';
-        roundedRect(-w/2, -h/2, w, h, 18);
-        ctx.fill();
-
-        // Inside
-        ctx.fillStyle = '#f1f5f9';
-        roundedRect(-w/2+10, -h/2+10, w-20, h-20, 14);
-        ctx.fill();
-
-        // Candy stripes
-        ctx.save();
-        ctx.globalAlpha = 0.9;
+        ctx.globalAlpha = 0.22;
+        ctx.fillStyle = '#2b4a69';
         ctx.beginPath();
-        roundedRect(-w/2+10, -h/2+10, w-20, h-20, 14);
+        ctx.ellipse(0, h * 0.48, w * 0.42, h * 0.18, 0, 0, Math.PI * 2);
+        ctx.fill();
+
+        const shell = ctx.createLinearGradient(0, -h * 0.5, 0, h * 0.5);
+        shell.addColorStop(0, '#ffe6b2');
+        shell.addColorStop(0.62, '#f6bd67');
+        shell.addColorStop(1, '#dc9846');
+        ctx.fillStyle = shell;
+        roundedRect(-w/2, -h/2, w, h, 20);
+        ctx.fill();
+
+        ctx.save();
+        roundedRect(-w/2 + 8, -h/2 + 8, w - 16, h - 16, 14);
         ctx.clip();
-        for (let i=-w; i<w; i+=26){
-          ctx.fillStyle = (i/26)%2===0 ? '#ff70a6' : '#ffd670';
+
+        ctx.globalAlpha = 0.32;
+        ctx.strokeStyle = '#d38337';
+        ctx.lineWidth = Math.max(2, h * 0.085);
+        for (let ix = -w; ix <= w; ix += 20) {
           ctx.beginPath();
-          ctx.moveTo(i, -h);
-          ctx.lineTo(i+12, -h);
-          ctx.lineTo(i+w, h);
-          ctx.lineTo(i+w-12, h);
-          ctx.closePath();
-          ctx.globalAlpha = 0.18;
-          ctx.fill();
+          ctx.moveTo(ix, -h);
+          ctx.lineTo(ix + w, h);
+          ctx.stroke();
+        }
+
+        ctx.globalAlpha = 0.22;
+        for (let ix = -w; ix <= w; ix += 22) {
+          ctx.beginPath();
+          ctx.moveTo(ix, h);
+          ctx.lineTo(ix + w, -h);
+          ctx.stroke();
         }
         ctx.restore();
 
-        // Handle
-        ctx.strokeStyle = '#1f2937';
-        ctx.lineWidth = 7;
-        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = 'rgba(255,242,213,.9)';
+        roundedRect(-w/2 + 8, -h/2 + 8, w - 16, h * 0.2, 10);
+        ctx.fill();
+
+        ctx.strokeStyle = '#fbe8c1';
+        ctx.lineWidth = Math.max(3, h * 0.09);
         ctx.beginPath();
-        ctx.arc(0, -h/2+4, w*0.28, Math.PI, 0);
+        ctx.arc(0, -h/2 + 6, w*0.29, Math.PI * 1.05, Math.PI * 1.95, true);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#b36d33';
+        ctx.lineWidth = Math.max(2, h * 0.05);
+        ctx.beginPath();
+        ctx.arc(0, -h/2 + 6, w*0.29, Math.PI * 1.05, Math.PI * 1.95, true);
         ctx.stroke();
 
         ctx.restore();
@@ -1663,20 +2236,48 @@
         ctx.scale(1, drawFixScaleY);
         ctx.rotate(o.rot);
 
-        // glow for star
         if (o.kind === 'star') {
-          ctx.globalAlpha = 0.28;
+          const glow = ctx.createRadialGradient(0, 0, o.r * 0.08, 0, 0, o.r * 1.45);
+          glow.addColorStop(0, 'rgba(255,250,211,.9)');
+          glow.addColorStop(0.38, 'rgba(255,223,128,.65)');
+          glow.addColorStop(1, 'rgba(255,183,92,0)');
+          ctx.fillStyle = glow;
           ctx.beginPath();
-          ctx.arc(0, 0, o.r*1.35, 0, Math.PI*2);
-          ctx.fillStyle = '#ffd670';
+          ctx.arc(0, 0, o.r * 1.45, 0, Math.PI * 2);
           ctx.fill();
+
+          const starFill = ctx.createLinearGradient(-o.r, -o.r, o.r, o.r);
+          starFill.addColorStop(0, '#fff7b6');
+          starFill.addColorStop(0.56, '#ffd86a');
+          starFill.addColorStop(1, '#ffb95b');
+          ctx.fillStyle = starFill;
+          drawStarPath(o.r, o.r * 0.5);
+          ctx.fill();
+
+          ctx.lineWidth = Math.max(1.5, o.r * 0.09);
+          ctx.strokeStyle = 'rgba(255,255,255,.65)';
+          ctx.stroke();
+
+          ctx.fillStyle = 'rgba(255,255,255,.6)';
+          drawStarPath(o.r * 0.42, o.r * 0.2);
+          ctx.fill();
+
+          ctx.restore();
+          return;
         }
 
-        ctx.globalAlpha = 1;
-        ctx.font = `${Math.floor(o.r*1.65)}px "Apple Color Emoji","Segoe UI Emoji","Noto Color Emoji",sans-serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(o.emoji, 0, 0);
+        const style = getFruitStyle(o.emoji);
+        if (style.kind === 'banana') {
+          drawBanana(style, o.r);
+        } else if (style.kind === 'strawberry') {
+          drawStrawberry(style, o.r);
+        } else if (style.kind === 'grape') {
+          drawGrape(style, o.r);
+        } else if (style.kind === 'watermelon') {
+          drawWatermelon(style, o.r);
+        } else {
+          drawRoundFruit(style, o.r);
+        }
 
         ctx.restore();
       }
@@ -1693,10 +2294,20 @@
 
           const alpha = Math.max(0, k) * particleDensity;
           if (alpha <= 0.01) continue;
+          const size = p.r * (0.5 + k * (0.5 + particleDensity * 0.2));
+
           ctx.globalAlpha = alpha * (fever ? 1.0 : 0.9);
-          ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r * (0.52 + k * (0.48 + particleDensity * 0.25)), 0, Math.PI*2);
           ctx.fillStyle = p.color;
+          ctx.beginPath();
+          if ((i % 4) === 0) {
+            ctx.moveTo(p.x, p.y - size);
+            ctx.lineTo(p.x + size * 0.76, p.y);
+            ctx.lineTo(p.x, p.y + size);
+            ctx.lineTo(p.x - size * 0.76, p.y);
+            ctx.closePath();
+          } else {
+            ctx.arc(p.x, p.y, size, 0, Math.PI*2);
+          }
           ctx.fill();
           ctx.globalAlpha = 1;
         }
@@ -1714,15 +2325,20 @@
           ctx.globalAlpha = Math.max(0, k);
           ctx.translate(ft.x, ft.y);
           ctx.scale(1, drawFixScaleY);
-          const fontSize = Math.max(20, Math.round(28 * floatTextScale));
-          ctx.font = `900 ${fontSize}px "M PLUS Rounded 1c","Zen Maru Gothic",system-ui,sans-serif`;
+          const fontSize = Math.max(20, Math.round(30 * floatTextScale));
+          ctx.font = `900 ${fontSize}px "M PLUS Rounded 1c",sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = 'rgba(31,41,55,.35)';
-          ctx.lineWidth = Math.max(4, fontSize * 0.21);
+
+          ctx.strokeStyle = 'rgba(32,48,73,.42)';
+          ctx.lineWidth = Math.max(4, fontSize * 0.22);
           ctx.strokeText(ft.text, 0, 0);
-          ctx.fillStyle = ft.color;
+
+          const textFill = ctx.createLinearGradient(-fontSize * 0.8, 0, fontSize * 0.8, 0);
+          textFill.addColorStop(0, '#fffdf4');
+          textFill.addColorStop(0.5, ft.color);
+          textFill.addColorStop(1, '#fffdf4');
+          ctx.fillStyle = textFill;
           ctx.fillText(ft.text, 0, 0);
           ctx.restore();
         }
@@ -1867,19 +2483,29 @@
           ctx.save();
           ctx.translate(canvas.width/2, canvas.height/2);
           ctx.scale(1, drawFixScaleY);
-          ctx.globalAlpha = 0.92;
-          ctx.fillStyle = '#ffffff';
-          const panelW = Math.min(canvas.width * 0.76, 380 * pausePanelScale);
-          const panelH = Math.min(canvas.height * 0.34, 156 * pausePanelScale);
+          ctx.globalAlpha = 0.94;
+          const panelW = Math.min(canvas.width * 0.76, 410 * pausePanelScale);
+          const panelH = Math.min(canvas.height * 0.34, 160 * pausePanelScale);
           const corner = Math.max(18, 26 * pausePanelScale);
+
+          const panel = ctx.createLinearGradient(0, -panelH/2, 0, panelH/2);
+          panel.addColorStop(0, '#fffdf4');
+          panel.addColorStop(1, '#ffe8ba');
+          ctx.fillStyle = panel;
           roundedRect(-panelW/2, -panelH/2, panelW, panelH, corner);
           ctx.fill();
-          ctx.fillStyle = '#1f2937';
-          const pauseFontSize = Math.max(30, Math.round(44 * pausePanelScale));
-          ctx.font = `900 ${pauseFontSize}px "M PLUS Rounded 1c","Zen Maru Gothic",system-ui,sans-serif`;
+
+          ctx.strokeStyle = 'rgba(255,255,255,.85)';
+          ctx.lineWidth = 2;
+          roundedRect(-panelW/2, -panelH/2, panelW, panelH, corner);
+          ctx.stroke();
+
+          ctx.fillStyle = '#21405e';
+          const pauseFontSize = Math.max(32, Math.round(44 * pausePanelScale));
+          ctx.font = `900 ${pauseFontSize}px "M PLUS Rounded 1c",sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.fillText('一時停止', 0, 1);
+          ctx.fillText('一時停止', 0, 0);
           ctx.restore();
         }
 
