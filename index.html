@@ -36,6 +36,9 @@
       --hud-inset-top:14px;
       --hud-inset-side:14px;
       --text-leading:1.35;
+      --fever-neon-a:#ffd670;
+      --fever-neon-b:#ff70a6;
+      --fever-neon-c:#9b5de5;
     }
 
     *{ box-sizing:border-box; }
@@ -107,6 +110,12 @@
 
     .pill .big{ font-size: calc(18px * var(--hud-scale)); }
     .mini{ font-size: calc(14px * var(--hud-scale)); opacity:.85; font-weight:900; }
+    #score{
+      display:inline-block;
+      min-width:2ch;
+      transform-origin:center;
+      transition: transform .09s linear, text-shadow .09s linear, color .16s ease;
+    }
 
     .hearts{
       display:flex;
@@ -190,6 +199,54 @@
     .badge .spark{
       font-size: calc(18px * var(--hud-scale));
       filter: drop-shadow(0 2px 2px rgba(0,0,0,.12));
+    }
+    .badge.fever-neon{
+      color:#fffaf0;
+      background:
+        linear-gradient(120deg, var(--fever-neon-b), var(--fever-neon-c), var(--fever-neon-a));
+      border-color: rgba(255,255,255,.74);
+      box-shadow:
+        0 0 0 1px rgba(255,255,255,.35) inset,
+        0 0 14px rgba(255,112,166,.55),
+        0 0 24px rgba(155,93,229,.46),
+        0 14px 28px rgba(0,0,0,.2);
+      animation: badgeNeonPulse 1.2s ease-in-out infinite;
+      backdrop-filter: blur(3px);
+    }
+    .badge.fever-neon .spark{
+      filter: drop-shadow(0 0 6px rgba(255,214,112,.75));
+      animation: badgeSparkTwinkle .75s ease-in-out infinite alternate;
+    }
+    .badge.fever-neon #feverTime{
+      color:#ffffff;
+      text-shadow:
+        0 0 6px rgba(255,255,255,.8),
+        0 0 14px rgba(255,112,166,.58);
+    }
+    .badge.fever-neon[data-phase="enter"]{
+      animation-duration:0.85s;
+    }
+    .badge.fever-neon[data-phase="active"]{
+      animation-duration:1.08s;
+    }
+    .badge.fever-neon[data-phase="exit"]{
+      animation-duration:1.36s;
+      opacity:.9;
+    }
+
+    @keyframes badgeNeonPulse{
+      0%,100%{
+        transform: scale(1);
+        filter: saturate(1);
+      }
+      50%{
+        transform: scale(1.035);
+        filter: saturate(1.18);
+      }
+    }
+    @keyframes badgeSparkTwinkle{
+      from{ transform: translateY(0); }
+      to{ transform: translateY(-1px) scale(1.08); }
     }
 
     .overlay{
@@ -310,6 +367,13 @@
       .overlay,
       button{
         transition:none;
+      }
+      #score{
+        transition: color .16s ease;
+      }
+      .badge.fever-neon,
+      .badge.fever-neon .spark{
+        animation:none;
       }
     }
   </style>
@@ -489,11 +553,30 @@
       let fever = false;
       let feverEnd = 0; // seconds (game time)
       const FEVER_DURATION = 20;
+      const FEVER_ENTER_DURATION = 0.82;
+      const FEVER_EXIT_DURATION = 0.56;
+
+      const feverFx = {
+        phase: 'idle', // idle | enter | active | exit
+        phaseStart: 0,
+        enterDuration: FEVER_ENTER_DURATION,
+        exitDuration: FEVER_EXIT_DURATION,
+        flash: 0,
+        hitPulse: 0,
+        originX: BASE_CANVAS_W * 0.5,
+        originY: BASE_CANVAS_H * 0.35
+      };
+      let scorePulse = 0;
+      let runtimeFxQuality = 1;
 
       // Entities
       const objects = []; // fruits & star
       const pops = [];
       const floatTexts = [];
+      const feverShockwaves = [];
+      const feverSparks = [];
+      const feverHitBursts = [];
+      const feverStreams = [];
 
       // Input
       const keys = new Set();
@@ -706,6 +789,269 @@
       // Helpers
       function rand(a,b){ return a + Math.random()*(b-a); }
       function clamp(v, a, b){ return Math.max(a, Math.min(b, v)); }
+      function easeOutCubic(t){ const p = clamp(t, 0, 1); return 1 - Math.pow(1 - p, 3); }
+      function easeInCubic(t){ const p = clamp(t, 0, 1); return p * p * p; }
+      function getRuntimeFxDensity() {
+        return clamp(particleDensity * runtimeFxQuality, 0.12, 1.12);
+      }
+
+      function updateScorePulseStyles() {
+        const hot = fever || feverFx.phase !== 'idle';
+        if (scorePulse <= 0.001) {
+          scoreEl.style.transform = 'scale(1)';
+          scoreEl.style.textShadow = 'none';
+          scoreEl.style.color = '';
+          return;
+        }
+        const pulseGain = reducedMotionQuery.matches ? 0.62 : 1.0;
+        const scale = 1 + scorePulse * (hot ? 0.25 : 0.14) * pulseGain;
+        const glow = Math.round((hot ? 10 : 6) + scorePulse * (hot ? 18 : 10) * pulseGain);
+        scoreEl.style.transform = `scale(${scale.toFixed(3)})`;
+        scoreEl.style.textShadow = hot
+          ? `0 0 ${glow}px rgba(255,214,112,.9), 0 0 ${Math.round(glow * 1.6)}px rgba(255,112,166,.55)`
+          : `0 0 ${glow}px rgba(255,255,255,.55)`;
+        scoreEl.style.color = hot ? '#fffaf0' : '';
+      }
+
+      function clearFeverVisualState() {
+        feverShockwaves.length = 0;
+        feverSparks.length = 0;
+        feverHitBursts.length = 0;
+        feverFx.phase = 'idle';
+        feverFx.phaseStart = 0;
+        feverFx.flash = 0;
+        feverFx.hitPulse = 0;
+        scorePulse = 0;
+        updateScorePulseStyles();
+        feverBadge.dataset.phase = 'idle';
+        feverBadge.classList.remove('fever-neon');
+      }
+
+      function rebuildFeverStreams() {
+        feverStreams.length = 0;
+        const density = getRuntimeFxDensity();
+        const count = Math.max(6, Math.round((reducedMotionQuery.matches ? 8 : 16) * density));
+        for (let i=0; i<count; i++) {
+          feverStreams.push({
+            lane: rand(0.16, 0.86),
+            seed: Math.random() * 1000,
+            speed: rand(0.58, 1.72),
+            len: rand(72, 196),
+            width: rand(1.5, 3.8),
+            amp: rand(8, 26),
+            tone: i % 3
+          });
+        }
+      }
+
+      function spawnFeverShockwave(x, y, type='entry') {
+        if (type === 'entry') {
+          const waveCount = Math.max(1, Math.round((reducedMotionQuery.matches ? 1 : 2) * getRuntimeFxDensity()));
+          for (let i=0; i<waveCount; i++) {
+            feverShockwaves.push({
+              x, y,
+              t: -i * 0.08,
+              life: feverFx.enterDuration + 0.24 + i * 0.08,
+              startR: 16 + i * 12,
+              endR: Math.max(canvas.width, canvas.height) * (0.54 + i * 0.12),
+              width: 22 - i * 6,
+              color: i === 0 ? '255,255,255' : '255,214,112',
+              mode: 'expand'
+            });
+          }
+          return;
+        }
+        feverShockwaves.push({
+          x, y,
+          t: 0,
+          life: feverFx.exitDuration + 0.18,
+          startR: Math.max(canvas.width, canvas.height) * 0.50,
+          endR: 24,
+          width: 15,
+          color: '255,255,255',
+          mode: 'collapse'
+        });
+      }
+
+      function spawnFeverEntrySparks(x, y) {
+        const density = getRuntimeFxDensity();
+        const count = Math.max(10, Math.round((reducedMotionQuery.matches ? 16 : 34) * density));
+        for (let i=0; i<count; i++) {
+          const angle = (Math.PI * 2 * i / count) + rand(-0.16, 0.16);
+          const speed = rand(220, 720) * (0.52 + density * 0.48);
+          feverSparks.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed - rand(10, 70),
+            t: 0,
+            life: rand(0.36, 0.84),
+            size: rand(2.2, 5.4),
+            tone: i % 3,
+            mode: 'burst'
+          });
+        }
+      }
+
+      function spawnFeverExitConverge() {
+        const cx = canvas.width * 0.5;
+        const cy = canvas.height * 0.36;
+        const density = getRuntimeFxDensity();
+        const count = Math.max(8, Math.round((reducedMotionQuery.matches ? 12 : 24) * density));
+        for (let i=0; i<count; i++) {
+          const edge = i % 4;
+          let x = 0;
+          let y = 0;
+          if (edge === 0) { x = rand(0, canvas.width); y = -8; }
+          if (edge === 1) { x = canvas.width + 8; y = rand(0, canvas.height); }
+          if (edge === 2) { x = rand(0, canvas.width); y = canvas.height + 8; }
+          if (edge === 3) { x = -8; y = rand(0, canvas.height); }
+          const dx = cx - x;
+          const dy = cy - y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const speed = dist / rand(0.42, 0.76);
+          feverSparks.push({
+            x, y,
+            vx: (dx / dist) * speed,
+            vy: (dy / dist) * speed,
+            t: 0,
+            life: rand(0.46, 0.82),
+            size: rand(1.8, 4.5),
+            tone: i % 3,
+            mode: 'converge'
+          });
+        }
+      }
+
+      function triggerFeverHitFeedback(x, y, color='#ffd670') {
+        const density = getRuntimeFxDensity();
+        const burstLife = reducedMotionQuery.matches ? 0.24 : 0.32;
+        feverHitBursts.push({
+          x, y,
+          color,
+          t: 0,
+          life: burstLife,
+          r0: 12,
+          r1: 68
+        });
+        feverFx.hitPulse = clamp(feverFx.hitPulse + (reducedMotionQuery.matches ? 0.24 : 0.42), 0, 1.25);
+        scorePulse = clamp(scorePulse + (fever ? 0.82 : 0.46), 0, 1.35);
+
+        const sparkCount = Math.max(4, Math.round((reducedMotionQuery.matches ? 4 : 10) * density));
+        for (let i=0; i<sparkCount; i++) {
+          const angle = (Math.PI * 2 * i / sparkCount) + rand(-0.24, 0.24);
+          const speed = rand(120, 360);
+          feverSparks.push({
+            x, y,
+            vx: Math.cos(angle) * speed,
+            vy: Math.sin(angle) * speed,
+            t: 0,
+            life: rand(0.16, 0.36),
+            size: rand(1.4, 3.4),
+            tone: i % 3,
+            mode: 'hit'
+          });
+        }
+      }
+
+      function setFeverPhase(nextPhase, nowSec, originX = canvas.width * 0.5, originY = canvas.height * 0.35) {
+        if (nextPhase === 'enter') {
+          feverFx.phase = 'enter';
+          feverFx.phaseStart = nowSec;
+          feverFx.enterDuration = reducedMotionQuery.matches ? 0.64 : FEVER_ENTER_DURATION;
+          feverFx.exitDuration = reducedMotionQuery.matches ? 0.44 : FEVER_EXIT_DURATION;
+          feverFx.originX = originX;
+          feverFx.originY = originY;
+          feverFx.flash = reducedMotionQuery.matches ? 0.32 : 1.0;
+          feverFx.hitPulse = reducedMotionQuery.matches ? 0.28 : 0.62;
+          feverBadge.classList.add('show', 'fever-neon');
+          feverBadge.dataset.phase = 'enter';
+          spawnFeverShockwave(originX, originY, 'entry');
+          spawnFeverEntrySparks(originX, originY);
+          return;
+        }
+        if (nextPhase === 'active') {
+          feverFx.phase = 'active';
+          feverFx.phaseStart = nowSec;
+          feverBadge.classList.add('show', 'fever-neon');
+          feverBadge.dataset.phase = 'active';
+          return;
+        }
+        if (nextPhase === 'exit') {
+          feverFx.phase = 'exit';
+          feverFx.phaseStart = nowSec;
+          feverFx.flash = Math.max(feverFx.flash, reducedMotionQuery.matches ? 0.22 : 0.45);
+          feverFx.hitPulse = Math.max(feverFx.hitPulse, reducedMotionQuery.matches ? 0.2 : 0.38);
+          feverBadge.classList.add('show', 'fever-neon');
+          feverBadge.dataset.phase = 'exit';
+          spawnFeverShockwave(canvas.width * 0.5, canvas.height * 0.34, 'exit');
+          spawnFeverExitConverge();
+          return;
+        }
+        feverFx.phase = 'idle';
+        feverFx.phaseStart = nowSec;
+        feverFx.flash = 0;
+        feverFx.hitPulse = 0;
+        feverBadge.dataset.phase = 'idle';
+        feverBadge.classList.remove('fever-neon');
+        if (!fever) feverBadge.classList.remove('show');
+      }
+
+      function getFeverVisualState(nowSec) {
+        if (feverFx.phase === 'idle') {
+          return { phase:'idle', intensity:0, enterT:0, exitT:0 };
+        }
+        if (feverFx.phase === 'enter') {
+          const t = clamp((nowSec - feverFx.phaseStart) / feverFx.enterDuration, 0, 1);
+          const intensity = clamp(0.56 + easeOutCubic(t) * 0.68 + feverFx.hitPulse * 0.22, 0, 1.35);
+          return { phase:'enter', intensity, enterT:t, exitT:0 };
+        }
+        if (feverFx.phase === 'active') {
+          const intensity = clamp(1 + feverFx.hitPulse * 0.24, 0, 1.35);
+          return { phase:'active', intensity, enterT:1, exitT:0 };
+        }
+        const t = clamp((nowSec - feverFx.phaseStart) / feverFx.exitDuration, 0, 1);
+        const intensity = clamp((1 - easeInCubic(t)) + feverFx.hitPulse * 0.18, 0, 1.1);
+        return { phase:'exit', intensity, enterT:1, exitT:t };
+      }
+
+      function updateFeverEffects(dt) {
+        const targetQuality = dt > 0.029 ? 0.68 : dt > 0.024 ? 0.84 : 1.0;
+        runtimeFxQuality += (targetQuality - runtimeFxQuality) * Math.min(1, dt * 4.2);
+        runtimeFxQuality = clamp(runtimeFxQuality, 0.58, 1.0);
+
+        scorePulse = Math.max(0, scorePulse - dt * (reducedMotionQuery.matches ? 4.1 : 6.4));
+        feverFx.hitPulse = Math.max(0, feverFx.hitPulse - dt * (reducedMotionQuery.matches ? 2.8 : 4.6));
+        feverFx.flash = Math.max(0, feverFx.flash - dt * (reducedMotionQuery.matches ? 1.8 : 2.8));
+
+        const state = getFeverVisualState(totalElapsed);
+        if (feverFx.phase === 'enter' && state.enterT >= 1) {
+          setFeverPhase('active', totalElapsed);
+        } else if (feverFx.phase === 'exit' && state.exitT >= 1) {
+          setFeverPhase('idle', totalElapsed);
+        }
+
+        for (let i=feverShockwaves.length-1; i>=0; i--) {
+          const w = feverShockwaves[i];
+          w.t += dt;
+          if (w.t > w.life) feverShockwaves.splice(i, 1);
+        }
+
+        for (let i=feverSparks.length-1; i>=0; i--) {
+          const s = feverSparks[i];
+          s.t += dt;
+          if (s.t > s.life) { feverSparks.splice(i, 1); continue; }
+          if (s.mode !== 'converge') s.vy += 320 * dt;
+          s.x += s.vx * dt;
+          s.y += s.vy * dt;
+        }
+
+        for (let i=feverHitBursts.length-1; i>=0; i--) {
+          feverHitBursts[i].t += dt;
+          if (feverHitBursts[i].t > feverHitBursts[i].life) feverHitBursts.splice(i, 1);
+        }
+
+        updateScorePulseStyles();
+      }
 
       function detectDeviceType() {
         const touchPoints = navigator.maxTouchPoints || 0;
@@ -756,6 +1102,25 @@
               ft.x *= scaleX;
               ft.y *= scaleY;
             }
+            for (const w of feverShockwaves) {
+              w.x *= scaleX;
+              w.y *= scaleY;
+              w.startR *= Math.min(scaleX, scaleY);
+              w.endR *= Math.min(scaleX, scaleY);
+              w.width *= Math.min(scaleX, scaleY);
+            }
+            for (const s of feverSparks) {
+              s.x *= scaleX;
+              s.y *= scaleY;
+            }
+            for (const hb of feverHitBursts) {
+              hb.x *= scaleX;
+              hb.y *= scaleY;
+              hb.r0 *= Math.min(scaleX, scaleY);
+              hb.r1 *= Math.min(scaleX, scaleY);
+            }
+            feverFx.originX *= scaleX;
+            feverFx.originY *= scaleY;
           }
         }
 
@@ -793,6 +1158,7 @@
         rotationMotionScale = clamp(motionScale * (reducedMotion ? 0.78 : 1.00), 0.28, 1.00);
         pausePanelScale = pauseScale;
         floatTextScale = clamp(uiScale, 0.82, 1.05);
+        rebuildFeverStreams();
 
         const prevMinX = basket.w / 2 + 14;
         const prevMaxX = canvas.width - basket.w / 2 - 14;
@@ -877,10 +1243,12 @@
         basket.targetX = null;
 
         scoreEl.textContent = '0';
+        feverTimeEl.textContent = `${FEVER_DURATION.toFixed(1)}s`;
         speedMulEl.textContent = 'x1.00';
         updateHearts();
 
         pauseBtn.textContent = '一時停止';
+        clearFeverVisualState();
         feverBadge.classList.remove('show');
 
         if (music && soundOn) {
@@ -921,6 +1289,9 @@
       function endGame() {
         gameOver = true;
         running = false;
+        fever = false;
+        clearFeverVisualState();
+        feverBadge.classList.remove('show');
 
         if (music) music.setEnabled(false);
 
@@ -1037,88 +1408,181 @@
         ctx.closePath();
       }
 
-      function drawBackground() {
-        const now = performance.now();
-        const t = now * 0.0002 * backgroundMotionScale;
-        const feverBoost = fever ? (1.35 + fxDensity * 0.45) : 1;
-        const hillStep = Math.max(40, Math.round(56 / Math.max(0.35, fxDensity)));
-        const confettiCount = Math.max(6, Math.round(26 * fxDensity * feverBoost));
+      function drawFeverBackdrop(now, feverState, dynamicFx) {
+        if (feverState.intensity <= 0.001) return;
+        const intensity = feverState.intensity;
+        const pulseFreq = reducedMotionQuery.matches ? 0.0045 : 0.0078;
+        const pulse = 0.5 + 0.5 * Math.sin(now * pulseFreq * backgroundMotionScale + feverFx.hitPulse * 2.2);
+        const centerX = feverFx.phase === 'enter' ? feverFx.originX : canvas.width * 0.5;
+        const centerY = feverFx.phase === 'enter' ? feverFx.originY : canvas.height * 0.34;
+        const auraScale = feverState.phase === 'exit' ? (1.08 - feverState.exitT * 0.24) : (1.0 + pulse * 0.18);
 
-        // Fever special glow
-        if (fever) {
-          const pulse = 0.5 + 0.5*Math.sin(now * 0.010 * backgroundMotionScale);
-          const centerX = canvas.width * 0.5;
-          const centerY = canvas.height * 0.34;
+        ctx.save();
+        const g = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        g.addColorStop(0, 'rgba(255,214,112,.76)');
+        g.addColorStop(0.42, 'rgba(255,112,166,.72)');
+        g.addColorStop(1, 'rgba(155,93,229,.70)');
+        ctx.globalAlpha = (0.20 + pulse * 0.24) * intensity;
+        ctx.fillStyle = g;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
 
+        ctx.save();
+        const aura = ctx.createRadialGradient(
+          centerX,
+          centerY,
+          Math.max(24, canvas.width * 0.03),
+          centerX,
+          centerY,
+          canvas.width * 0.64 * auraScale
+        );
+        aura.addColorStop(0, 'rgba(255,255,255,0.75)');
+        aura.addColorStop(0.24, 'rgba(255,214,112,0.52)');
+        aura.addColorStop(0.58, 'rgba(255,112,166,0.30)');
+        aura.addColorStop(1, 'rgba(155,93,229,0)');
+        ctx.globalAlpha = (0.26 + pulse * 0.20) * intensity;
+        ctx.fillStyle = aura;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.restore();
+
+        const streamAlpha = Math.min(0.52, (0.12 + intensity * 0.22) * (0.5 + dynamicFx * 0.5));
+        if (streamAlpha > 0.01 && feverStreams.length) {
           ctx.save();
-          ctx.globalAlpha = (0.22 + pulse * 0.22) * (0.68 + fxDensity * 0.32);
-          const g = ctx.createLinearGradient(0,0,canvas.width,canvas.height);
-          g.addColorStop(0,  '#ffd670');
-          g.addColorStop(0.5,'#ff70a6');
-          g.addColorStop(1,  '#9b5de5');
-          ctx.fillStyle = g;
-          ctx.fillRect(0,0,canvas.width,canvas.height);
-          ctx.restore();
-
-          ctx.save();
-          const bloom = ctx.createRadialGradient(centerX, centerY, canvas.width * 0.05, centerX, centerY, canvas.width * 0.62);
-          bloom.addColorStop(0, 'rgba(255,255,255,0.62)');
-          bloom.addColorStop(0.35, 'rgba(255,214,112,0.38)');
-          bloom.addColorStop(1, 'rgba(255,214,112,0)');
-          ctx.globalAlpha = 0.30 + pulse * 0.22;
-          ctx.fillStyle = bloom;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
-          ctx.restore();
-
-          const flareCount = Math.max(8, Math.round(16 * fxDensity));
-          ctx.save();
-          ctx.translate(centerX, centerY);
-          ctx.rotate(now * 0.00065 * backgroundMotionScale);
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = (0.09 + pulse * 0.18) * (0.52 + fxDensity * 0.48);
-          for (let i=0; i<flareCount; i++) {
-            const len = canvas.width * (0.24 + (i % 3) * 0.045 + pulse * 0.06);
-            const spread = canvas.height * (0.017 + (i % 2) * 0.011);
-            ctx.rotate((Math.PI * 2) / flareCount);
+          for (let i=0; i<feverStreams.length; i++) {
+            const s = feverStreams[i];
+            const travel = ((now * 0.001 * (100 + s.speed * 95) * backgroundMotionScale) + s.seed * 0.73) % (canvas.width + s.len * 2);
+            const x = travel - s.len;
+            const y = canvas.height * s.lane + Math.sin(now * 0.0018 * s.speed + s.seed) * s.amp * (0.22 + intensity * 0.78);
+            ctx.globalAlpha = streamAlpha * (0.65 + (s.tone % 3) * 0.18);
+            ctx.strokeStyle = s.tone === 0 ? '#ffd670' : s.tone === 1 ? '#ff70a6' : '#ffffff';
+            ctx.lineWidth = s.width * (0.72 + intensity * 0.42);
             ctx.beginPath();
-            ctx.moveTo(0, 0);
-            ctx.lineTo(len, -spread);
-            ctx.lineTo(len * 1.05, spread);
-            ctx.closePath();
-            ctx.fillStyle = i % 2 ? '#ffd670' : '#ff70a6';
-            ctx.fill();
+            ctx.moveTo(x, y);
+            ctx.lineTo(x + s.len, y - s.amp * 0.24);
+            ctx.stroke();
           }
-          ctx.restore();
-
-          ctx.save();
-          ctx.globalAlpha = 0.24 + pulse * 0.16;
-          ctx.strokeStyle = '#ffffff';
-          ctx.lineWidth = 6;
-          ctx.beginPath();
-          ctx.arc(centerX, centerY, canvas.width * (0.12 + pulse * 0.05), 0, Math.PI * 2);
-          ctx.stroke();
           ctx.restore();
         }
 
+        if (feverFx.flash > 0.001) {
+          ctx.save();
+          ctx.globalAlpha = feverFx.flash * (reducedMotionQuery.matches ? 0.24 : 0.38);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.restore();
+        }
+      }
+
+      function drawFeverShockwavesLayer() {
+        if (!feverShockwaves.length) return;
+        const density = getRuntimeFxDensity();
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const w of feverShockwaves) {
+          if (w.t < 0) continue;
+          const p = clamp(w.t / w.life, 0, 1);
+          const k = w.mode === 'collapse' ? easeInCubic(p) : easeOutCubic(p);
+          const radius = w.startR + (w.endR - w.startR) * k;
+          const alpha = (1 - p) * (w.mode === 'collapse' ? 0.58 : 0.72) * (0.45 + density * 0.55);
+          if (alpha <= 0.01) continue;
+          ctx.globalAlpha = alpha;
+          ctx.strokeStyle = `rgba(${w.color}, 1)`;
+          ctx.lineWidth = Math.max(1.6, w.width * (1 - p * 0.78));
+          ctx.beginPath();
+          ctx.arc(w.x, w.y, radius, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawFeverSparkLayer() {
+        if (!feverSparks.length) return;
+        const toneColor = ['#ffd670', '#ff70a6', '#ffffff'];
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const s of feverSparks) {
+          const lifeK = 1 - (s.t / s.life);
+          if (lifeK <= 0) continue;
+          const trail = s.mode === 'converge' ? 0.022 : 0.032;
+          const px = s.x - s.vx * trail;
+          const py = s.y - s.vy * trail;
+          ctx.globalAlpha = lifeK * (s.mode === 'hit' ? 0.95 : 0.82);
+          ctx.strokeStyle = toneColor[s.tone % toneColor.length];
+          ctx.lineWidth = Math.max(1.2, s.size * lifeK);
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(s.x, s.y);
+          ctx.stroke();
+          if (s.mode === 'hit') {
+            ctx.beginPath();
+            ctx.arc(s.x, s.y, s.size * lifeK * 0.8, 0, Math.PI * 2);
+            ctx.fillStyle = toneColor[s.tone % toneColor.length];
+            ctx.fill();
+          }
+        }
+        ctx.restore();
+      }
+
+      function drawFeverHitBurstsLayer() {
+        if (!feverHitBursts.length) return;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const hb of feverHitBursts) {
+          const p = clamp(hb.t / hb.life, 0, 1);
+          const lifeK = 1 - p;
+          if (lifeK <= 0) continue;
+          const ringR = hb.r0 + (hb.r1 - hb.r0) * easeOutCubic(p);
+          ctx.globalAlpha = lifeK * 0.78;
+          ctx.strokeStyle = hb.color;
+          ctx.lineWidth = Math.max(1.6, 8 * lifeK);
+          ctx.beginPath();
+          ctx.arc(hb.x, hb.y, ringR, 0, Math.PI * 2);
+          ctx.stroke();
+
+          const cross = 8 + ringR * 0.28;
+          ctx.lineWidth = Math.max(1.2, 5 * lifeK);
+          ctx.beginPath();
+          ctx.moveTo(hb.x - cross, hb.y);
+          ctx.lineTo(hb.x + cross, hb.y);
+          ctx.moveTo(hb.x, hb.y - cross);
+          ctx.lineTo(hb.x, hb.y + cross);
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
+      function drawBackground() {
+        const now = performance.now();
+        const dynamicFx = clamp(fxDensity * runtimeFxQuality, 0.18, 1.18);
+        const feverState = getFeverVisualState(totalElapsed);
+        const feverIntensity = feverState.intensity;
+        const feverBoost = 1 + feverIntensity * (reducedMotionQuery.matches ? 0.28 : 0.55);
+        const t = now * 0.0002 * backgroundMotionScale * feverBoost;
+        const hillStep = Math.max(40, Math.round(56 / Math.max(0.35, dynamicFx)));
+        const confettiCount = Math.max(6, Math.round((20 + feverIntensity * 22) * dynamicFx));
+
+        drawFeverBackdrop(now, feverState, dynamicFx);
+
         // Soft hills
         ctx.save();
-        ctx.globalAlpha = 0.25;
-        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = 0.25 + feverIntensity * 0.08;
+        ctx.fillStyle = feverIntensity > 0.08 ? '#fff8ff' : '#ffffff';
         ctx.beginPath();
         ctx.moveTo(0, canvas.height);
         for (let x=0; x<=canvas.width; x+=hillStep){
-          const y = canvas.height - 80 - Math.sin(x*0.008 + t*3) * 18;
+          const y = canvas.height - 80 - Math.sin(x*0.008 + t*3) * (16 + feverIntensity * 12);
           ctx.lineTo(x, y);
         }
         ctx.lineTo(canvas.width, canvas.height);
         ctx.closePath();
         ctx.fill();
 
-        ctx.globalAlpha = 0.18;
+        ctx.globalAlpha = 0.18 + feverIntensity * 0.08;
         ctx.beginPath();
         ctx.moveTo(0, canvas.height);
         for (let x=0; x<=canvas.width; x+=hillStep){
-          const y = canvas.height - 35 - Math.sin(x*0.01 + t*2) * 12;
+          const y = canvas.height - 35 - Math.sin(x*0.01 + t*2) * (11 + feverIntensity * 8);
           ctx.lineTo(x, y);
         }
         ctx.lineTo(canvas.width, canvas.height);
@@ -1128,16 +1592,19 @@
 
         // Confetti dots
         ctx.save();
-        ctx.globalAlpha = (fever ? 0.42 : 0.22) * (0.45 + fxDensity * 0.55);
+        ctx.globalAlpha = (0.21 + feverIntensity * 0.2) * (0.45 + dynamicFx * 0.55);
         for (let i=0;i<confettiCount;i++){
-          const x = (i * 97 + (now * 0.05 * backgroundMotionScale * (fever ? 1.8 : 1))) % canvas.width;
-          const y = 90 + (i * 53) % Math.max(220, Math.round(320 * (0.65 + fxDensity * 0.35)));
+          const speed = (0.05 + feverIntensity * 0.05) * backgroundMotionScale;
+          const x = (i * 97 + (now * speed)) % canvas.width;
+          const y = 90 + (i * 53) % Math.max(220, Math.round(320 * (0.65 + dynamicFx * 0.35)));
           ctx.beginPath();
-          ctx.arc(x, y, (3 + (i%4)) * (0.75 + fxDensity * 0.3), 0, Math.PI*2);
-          ctx.fillStyle = ['#ff70a6','#ffd670','#46d19f','#9b5de5','#ff9770','#ffffff'][i%6];
+          ctx.arc(x, y, (3 + (i % 4)) * (0.75 + dynamicFx * 0.3), 0, Math.PI*2);
+          ctx.fillStyle = ['#ff70a6','#ffd670','#46d19f','#9b5de5','#ff9770','#ffffff'][i % 6];
           ctx.fill();
         }
         ctx.restore();
+
+        drawFeverShockwavesLayer();
       }
 
       function drawBasket() {
@@ -1276,6 +1743,7 @@
 
         if (running && !paused) {
           totalElapsed += dt;
+          updateFeverEffects(dt);
 
           // speed multiplier (every 30 sec +10%)
           const gMul = globalSpeedMultiplier();
@@ -1312,8 +1780,8 @@
             feverTimeEl.textContent = `${remain.toFixed(1)}s`;
             if (remain <= 0) {
               fever = false;
-              feverBadge.classList.remove('show');
               if (music && soundOn) music.setMode('normal');
+              setFeverPhase('exit', totalElapsed);
               pop(canvas.width*0.5, canvas.height*0.22, '#ffffff', 24);
             }
           }
@@ -1335,12 +1803,13 @@
                 // Fever start (20s), points x2
                 fever = true;
                 feverEnd = totalElapsed + FEVER_DURATION;
-                feverBadge.classList.add('show');
+                setFeverPhase('enter', totalElapsed, o.x, o.y);
 
                 pop(o.x, o.y, '#ffd670', 34);
                 pop(o.x, o.y, '#ff70a6', 28);
                 pop(o.x, o.y, '#9b5de5', 20);
                 addFloatText(o.x, o.y - 10, 'フィーバー！', '#ffd670');
+                triggerFeverHitFeedback(o.x, o.y, '#ffd670');
 
                 sfx('star');
                 if (music && soundOn) music.setMode('fever');
@@ -1355,6 +1824,7 @@
 
               pop(o.x, o.y, o.color, fever ? 30 : 14);
               addFloatText(o.x, o.y - 12, `+${got}`, fever ? '#ffd670' : o.color);
+              if (fever) triggerFeverHitFeedback(o.x, o.y, '#ffd670');
               sfx('catch');
               continue;
             }
@@ -1383,6 +1853,10 @@
 
         // Draw basket
         drawBasket();
+
+        // Fever foreground FX
+        drawFeverSparkLayer();
+        drawFeverHitBurstsLayer();
 
         // Particles & float texts
         drawParticles(dt);
