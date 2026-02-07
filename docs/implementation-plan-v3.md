@@ -1,4 +1,4 @@
-# 改善実装プラン v3（v2再レビュー反映版）
+﻿# 改善実装プラン v3（v2再レビュー反映版）
 
 - 対象要件: `これはメモ.md`（REQ-01〜REQ-09）
 - 参照レビュー: `docs/implementation-plan-v2-review.md`

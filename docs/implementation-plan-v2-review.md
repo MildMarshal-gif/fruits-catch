@@ -1,4 +1,4 @@
-# 実装プランレビュー: `docs/implementation-plan-v2.md`
+﻿# 実装プランレビュー: `docs/implementation-plan-v2.md`
 
 - レビュー対象: `docs/implementation-plan-v2.md`
 - 要件参照元: `これはメモ.md`
