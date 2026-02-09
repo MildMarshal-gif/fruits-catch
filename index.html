@@ -1058,16 +1058,16 @@
       // key -> { state, img, w, h, error, retryCount, lastTriedAt, promise }
 
       const spriteMeta = {
-        fruit_apple: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
-        fruit_banana: { collisionRadiusPx: 120, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
-        fruit_orange: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
-        fruit_peach: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
-        fruit_strawberry: { collisionRadiusPx: 124, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
-        fruit_grape: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
-        fruit_watermelon: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
-        hazard_bug: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
-        bonus_star: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
-        basket_default: { anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_apple: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_banana: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_orange: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_peach: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_strawberry: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_grape: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_watermelon: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        hazard_bug: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        bonus_star: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        basket_default: { anchorX: 0.5, anchorY: 0.5, drawScale: 1.00, bodyWidthPx: 740, bodyHeightPx: 190 },
         fx_bug_hit: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
         fx_star_burst: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
         fx_fruit_pop: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 }
@@ -2422,11 +2422,32 @@
         return (dx*dx + dy*dy) <= r*r;
       }
 
+      function getBasketBodyRect() {
+        if (FEATURE_FLAGS.USE_IMAGE_BASKET) {
+          const metrics = getBasketSpriteMetrics();
+          if (metrics) {
+            return {
+              x: metrics.bodyX,
+              y: metrics.bodyY,
+              w: metrics.bodyW,
+              h: metrics.bodyH
+            };
+          }
+        }
+        return {
+          x: basket.x - basket.w / 2,
+          y: basket.y - basket.h / 2,
+          w: basket.w,
+          h: basket.h
+        };
+      }
+
       function intersectsObjBasket(o) {
-        const bx = basket.x - basket.w/2;
-        const by = basket.y - basket.h/2;
-        const bw = basket.w;
-        const bh = basket.h;
+        const bodyRect = getBasketBodyRect();
+        const bx = bodyRect.x;
+        const by = bodyRect.y;
+        const bw = bodyRect.w;
+        const bh = bodyRect.h;
         const insetX = Math.max(8, bw * 0.085);
         const insetTop = Math.max(4, bh * 0.14);
         const insetBottom = Math.max(2, bh * 0.10);
@@ -3331,26 +3352,64 @@
         drawBasketSpriteOrFallback();
       }
 
-      function drawBasketSpriteOrFallback() {
+      function getBasketSpriteMetrics() {
         const spriteKey = 'basket_default';
         const img = getImageOrNull(spriteKey);
-        if (!img) {
-          drawBasketFallback();
-          return;
-        }
+        if (!img) return null;
 
         const meta = spriteMeta[spriteKey] || {};
         const anchorX = meta.anchorX ?? 0.5;
         const anchorY = meta.anchorY ?? 0.5;
-        const scaleX = basket.w / Math.max(1, img.naturalWidth || img.width);
-        const scaleY = basket.h / Math.max(1, img.naturalHeight || img.height);
+        const imgW = Math.max(1, img.naturalWidth || img.width);
+        const imgH = Math.max(1, img.naturalHeight || img.height);
+        const bodyWidthPx = Math.max(1, meta.bodyWidthPx || imgW);
+        const bodyHeightPx = Math.max(1, meta.bodyHeightPx || imgH);
+        const scaleX = basket.w / bodyWidthPx;
+        const scaleY = basket.h / bodyHeightPx;
         const scale = Math.max(0.0001, Math.min(scaleX, scaleY)) * (meta.drawScale ?? 1);
-        let drawW = (img.naturalWidth || img.width) * scale;
-        let drawH = (img.naturalHeight || img.height) * scale;
+        const drawW = imgW * scale;
+        const drawH = imgH * scale;
+        const drawX = basket.x - drawW * anchorX;
+        const drawY = basket.y - drawH * anchorY;
+        const bodyX = drawX + (imgW - bodyWidthPx) * 0.5 * scale;
+        const bodyY = drawY + (imgH - bodyHeightPx) * 0.5 * scale;
+        const bodyW = bodyWidthPx * scale;
+        const bodyH = bodyHeightPx * scale;
+
+        return {
+          spriteKey,
+          img,
+          anchorX,
+          anchorY,
+          drawW,
+          drawH,
+          drawX,
+          drawY,
+          bodyX,
+          bodyY,
+          bodyW,
+          bodyH
+        };
+      }
+
+      function drawBasketSpriteOrFallback() {
+        const metrics = getBasketSpriteMetrics();
+        if (!metrics) {
+          drawBasketFallback();
+          return;
+        }
+
+        const { spriteKey, img, anchorX, anchorY, bodyW, bodyH } = metrics;
+        let drawW = metrics.drawW;
+        let drawH = metrics.drawH;
+        let drawX = metrics.drawX;
+        let drawY = metrics.drawY;
         const raster = getSpriteRaster(spriteKey, img, drawW, drawH);
         if (raster) {
           drawW = raster.drawW;
           drawH = raster.drawH;
+          drawX = basket.x - drawW * anchorX;
+          drawY = basket.y - drawH * anchorY;
         }
 
         ctx.save();
@@ -3359,13 +3418,13 @@
         ctx.globalAlpha = 0.26;
         ctx.fillStyle = '#21344a';
         ctx.beginPath();
-        ctx.ellipse(0, basket.h * 0.50, basket.w * 0.46, basket.h * 0.22, 0, 0, Math.PI * 2);
+        ctx.ellipse(0, bodyH * 0.52, bodyW * 0.46, bodyH * 0.22, 0, 0, Math.PI * 2);
         ctx.fill();
         ctx.globalAlpha = 1;
         if (raster) {
-          ctx.drawImage(raster.canvas, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
+          ctx.drawImage(raster.canvas, drawX - basket.x, drawY - basket.y, drawW, drawH);
         } else {
-          ctx.drawImage(img, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
+          ctx.drawImage(img, drawX - basket.x, drawY - basket.y, drawW, drawH);
         }
         ctx.restore();
       }
