@@ -1,0 +1,3 @@
+interface:
+  display_name: "Prompt Level Recommender"
+  short_description: "Create prompts and suggest Codex level (低/中/高/超高)"
