@@ -1028,6 +1028,77 @@
       let scorePulse = 0;
       let runtimeFxQuality = 1;
 
+      const FEATURE_FLAGS = {
+        USE_IMAGE_SPRITES: true,
+        USE_IMAGE_BASKET: true,
+        USE_IMAGE_FX: true
+      };
+
+      const ASSET_PRELOAD_TIMEOUT_MS = 1800;
+      const ASSET_RETRY_MAX = 1;
+      const ASSET_START_REQUIRED_RATIO = 0.0;
+
+      const IMAGE_MANIFEST = {
+        fruit_apple: 'assets/images/game-objects/fruit_apple_v2.png',
+        fruit_banana: 'assets/images/game-objects/fruit_banana_v2.png',
+        fruit_orange: 'assets/images/game-objects/fruit_orange_v2.png',
+        fruit_peach: 'assets/images/game-objects/fruit_peach_v2.png',
+        fruit_strawberry: 'assets/images/game-objects/fruit_strawberry_v2.png',
+        fruit_grape: 'assets/images/game-objects/fruit_grape_v2.png',
+        fruit_watermelon: 'assets/images/game-objects/fruit_watermelon_v2.png',
+        hazard_bug: 'assets/images/game-objects/hazard_bug_v2.png',
+        bonus_star: 'assets/images/game-objects/bonus_star_v2.png',
+        basket_default: 'assets/images/game-objects/basket_default_v1.png',
+        fx_bug_hit: 'assets/images/game-effects/fx_bug_hit_v1.png',
+        fx_star_burst: 'assets/images/game-effects/fx_star_burst_v1.png',
+        fx_fruit_pop: 'assets/images/game-effects/fx_fruit_pop_v1.png'
+      };
+
+      const imageCache = new Map();
+      // key -> { state, img, w, h, error, retryCount, lastTriedAt, promise }
+
+      const spriteMeta = {
+        fruit_apple: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_banana: { collisionRadiusPx: 120, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_orange: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_peach: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_strawberry: { collisionRadiusPx: 124, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_grape: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fruit_watermelon: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        hazard_bug: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        bonus_star: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        basket_default: { anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fx_bug_hit: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fx_star_burst: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 },
+        fx_fruit_pop: { collisionRadiusPx: 128, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 }
+      };
+
+      const SPRITE_RASTER_CACHE_MAX = 64;
+      const spriteRasterCache = new Map();
+      // `${spriteKey}:${sizeBucket}:${dpr}` -> { canvas, drawW, drawH }
+
+      const impactFxQueue = [];
+      // { fxKey, x, y, r, rot, life, t, alpha, scale }
+
+      const assetLoadMetrics = {
+        total: Object.keys(IMAGE_MANIFEST).length,
+        ready: 0,
+        error: 0,
+        timeout: false,
+        preloadElapsedMs: 0
+      };
+
+      const FX_MAX_ACTIVE_DESKTOP = 36;
+      const FX_MAX_ACTIVE_TABLET = 24;
+      const FX_MAX_ACTIVE_MOBILE = 16;
+
+      const playMetrics = {
+        elapsedSec: 0,
+        frames: 0,
+        feverTriggers: 0,
+        baselineLogged: false
+      };
+
       // Entities
       const objects = []; // fruits & star
       const pops = [];
@@ -1339,6 +1410,209 @@
       function easeInCubic(t){ const p = clamp(t, 0, 1); return p * p * p; }
       function getRuntimeFxDensity() {
         return clamp(particleDensity * runtimeFxQuality, 0.12, 1.12);
+      }
+
+      let assetLoadPromise = null;
+      let gameStartTicket = 0;
+
+      function resetPlayMetrics() {
+        playMetrics.elapsedSec = 0;
+        playMetrics.frames = 0;
+        playMetrics.feverTriggers = 0;
+        playMetrics.baselineLogged = false;
+      }
+
+      function updateBaselineMetrics(dt) {
+        if (!running || paused || gameOver) return;
+        playMetrics.elapsedSec += dt;
+        playMetrics.frames += 1;
+        if (!playMetrics.baselineLogged && playMetrics.elapsedSec >= 60) {
+          playMetrics.baselineLogged = true;
+          const avgFps = playMetrics.frames / Math.max(playMetrics.elapsedSec, 0.0001);
+          console.info('[baseline-60s]', {
+            score,
+            misses,
+            feverTriggers: playMetrics.feverTriggers,
+            avgFps: Number(avgFps.toFixed(2))
+          });
+        }
+      }
+
+      function refreshAssetLoadMetrics() {
+        const entries = [...imageCache.values()];
+        assetLoadMetrics.total = Object.keys(IMAGE_MANIFEST).length;
+        assetLoadMetrics.ready = entries.filter((entry) => entry.state === 'ready').length;
+        assetLoadMetrics.error = entries.filter((entry) => entry.state === 'error' && entry.retryCount > ASSET_RETRY_MAX).length;
+      }
+
+      function getAssetReadyRatio() {
+        if (!assetLoadMetrics.total) return 1;
+        return assetLoadMetrics.ready / assetLoadMetrics.total;
+      }
+
+      function ensureImageEntry(key) {
+        let entry = imageCache.get(key);
+        if (!entry) {
+          entry = {
+            state: 'idle',
+            img: null,
+            w: 0,
+            h: 0,
+            error: null,
+            retryCount: 0,
+            lastTriedAt: 0,
+            promise: null
+          };
+          imageCache.set(key, entry);
+        }
+        return entry;
+      }
+
+      function loadImageAsset(key) {
+        const src = IMAGE_MANIFEST[key];
+        if (!src) return Promise.resolve(null);
+
+        const entry = ensureImageEntry(key);
+        if (entry.state === 'ready' && entry.img) return Promise.resolve(entry);
+        if (entry.state === 'loading' && entry.promise) return entry.promise;
+        if (entry.state === 'error' && entry.retryCount > ASSET_RETRY_MAX) return Promise.resolve(entry);
+
+        entry.state = 'loading';
+        entry.error = null;
+        entry.lastTriedAt = performance.now();
+
+        entry.promise = new Promise((resolve) => {
+          const img = new Image();
+          img.decoding = 'async';
+          img.onload = () => {
+            entry.state = 'ready';
+            entry.img = img;
+            entry.w = img.naturalWidth || img.width || 0;
+            entry.h = img.naturalHeight || img.height || 0;
+            entry.error = null;
+            entry.promise = null;
+            refreshAssetLoadMetrics();
+            resolve(entry);
+          };
+          img.onerror = (err) => {
+            entry.state = 'error';
+            entry.retryCount += 1;
+            entry.error = err;
+            entry.promise = null;
+            refreshAssetLoadMetrics();
+            resolve(entry);
+          };
+          img.src = src;
+        });
+
+        return entry.promise;
+      }
+
+      async function loadImageAssetWithRetry(key) {
+        let entry = null;
+        for (let attempt = 0; attempt <= ASSET_RETRY_MAX; attempt++) {
+          entry = await loadImageAsset(key);
+          if (entry?.state === 'ready') return entry;
+          if (entry?.state === 'error' && entry.retryCount > ASSET_RETRY_MAX) break;
+        }
+        return entry;
+      }
+
+      async function loadGameAssets() {
+        if (assetLoadPromise) return assetLoadPromise;
+        const startedAt = performance.now();
+        refreshAssetLoadMetrics();
+        assetLoadPromise = Promise.allSettled(
+          Object.keys(IMAGE_MANIFEST).map((key) => loadImageAssetWithRetry(key))
+        ).then((results) => {
+          refreshAssetLoadMetrics();
+          assetLoadMetrics.preloadElapsedMs = performance.now() - startedAt;
+          return results;
+        }).catch((err) => {
+          console.warn('asset preload failed', err);
+          refreshAssetLoadMetrics();
+          return [];
+        });
+        return assetLoadPromise;
+      }
+
+      function getImageOrNull(key) {
+        const entry = imageCache.get(key);
+        if (!entry || entry.state !== 'ready' || !entry.img) return null;
+        return entry.img;
+      }
+
+      async function warmupAssetsWithTimeout() {
+        const startedAt = performance.now();
+        assetLoadMetrics.timeout = false;
+        const task = loadGameAssets();
+        const timeout = new Promise((resolve) => {
+          setTimeout(() => resolve('timeout'), ASSET_PRELOAD_TIMEOUT_MS);
+        });
+        const result = await Promise.race([task.then(() => 'loaded'), timeout]);
+        assetLoadMetrics.timeout = result === 'timeout';
+        assetLoadMetrics.preloadElapsedMs = performance.now() - startedAt;
+      }
+
+      function getSpriteKeyForObject(o) {
+        if (o.kind === 'star') return 'bonus_star';
+        if (o.kind === 'bug') return 'hazard_bug';
+        if (o.kind === 'fruit') return `fruit_${o.fruitKind}`;
+        return null;
+      }
+
+      function getFxKeyForObject(o) {
+        if (o.kind === 'star') return 'fx_star_burst';
+        if (o.kind === 'bug') return 'fx_bug_hit';
+        return 'fx_fruit_pop';
+      }
+
+      function getFxQueueLimit() {
+        const device = root.dataset.device || detectDeviceType();
+        if (device === 'mobile') return FX_MAX_ACTIVE_MOBILE;
+        if (device === 'tablet') return FX_MAX_ACTIVE_TABLET;
+        return FX_MAX_ACTIVE_DESKTOP;
+      }
+
+      function getSpriteRaster(spriteKey, img, targetDrawW, targetDrawH) {
+        if (!img || !targetDrawW || !targetDrawH) return null;
+        const dpr = Math.max(1, Math.round((window.devicePixelRatio || 1) * 100) / 100);
+        const sizeBucket = Math.max(8, Math.round(Math.max(targetDrawW, targetDrawH) / 8) * 8);
+        const cacheKey = `${spriteKey}:${sizeBucket}:${dpr}`;
+        const cached = spriteRasterCache.get(cacheKey);
+        if (cached) {
+          spriteRasterCache.delete(cacheKey);
+          spriteRasterCache.set(cacheKey, cached);
+          return cached;
+        }
+
+        const maxNatural = Math.max(1, img.naturalWidth || img.width, img.naturalHeight || img.height);
+        const scale = sizeBucket / maxNatural;
+        const drawW = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
+        const drawH = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
+        const rasterW = Math.max(1, Math.round(drawW * dpr));
+        const rasterH = Math.max(1, Math.round(drawH * dpr));
+
+        const offscreen = document.createElement('canvas');
+        offscreen.width = rasterW;
+        offscreen.height = rasterH;
+        const offCtx = offscreen.getContext('2d');
+        if (!offCtx) return null;
+        offCtx.imageSmoothingEnabled = true;
+        offCtx.drawImage(img, 0, 0, rasterW, rasterH);
+
+        const entry = {
+          canvas: offscreen,
+          drawW: rasterW / dpr,
+          drawH: rasterH / dpr
+        };
+        spriteRasterCache.set(cacheKey, entry);
+        while (spriteRasterCache.size > SPRITE_RASTER_CACHE_MAX) {
+          const oldestKey = spriteRasterCache.keys().next().value;
+          if (oldestKey == null) break;
+          spriteRasterCache.delete(oldestKey);
+        }
+        return entry;
       }
 
       function updateScoreCardState() {
@@ -1746,6 +2020,11 @@
               ft.x *= scaleX;
               ft.y *= scaleY;
             }
+            for (const fx of impactFxQueue) {
+              fx.x *= scaleX;
+              fx.y *= scaleY;
+              fx.r *= Math.min(scaleX, scaleY);
+            }
             for (const w of feverShockwaves) {
               w.x *= scaleX;
               w.y *= scaleY;
@@ -1876,6 +2155,7 @@
         objects.length = 0;
         pops.length = 0;
         floatTexts.length = 0;
+        impactFxQueue.length = 0;
         shootingStars.length = 0;
         totalElapsed = 0;
         fever = false;
@@ -1904,6 +2184,7 @@
         feverBadge.classList.remove('show');
         updateScoreCardState();
         updatePausePanel();
+        resetPlayMetrics();
 
         if (music && soundOn) {
           music.setEnabled(true);
@@ -1911,20 +2192,53 @@
         }
       }
 
-      function startGame() {
+      async function prepareAssetsForStart(ticket) {
+        try {
+          await warmupAssetsWithTimeout();
+        } catch (err) {
+          console.warn('asset warmup failed', err);
+        }
+        if (ticket !== gameStartTicket) return false;
+        const readyRatio = getAssetReadyRatio();
+        if (readyRatio < ASSET_START_REQUIRED_RATIO) {
+          console.warn('asset ready ratio below required threshold', {
+            readyRatio: Number(readyRatio.toFixed(3)),
+            requiredRatio: ASSET_START_REQUIRED_RATIO
+          });
+        }
+        return true;
+      }
+
+      async function startGame() {
+        const ticket = ++gameStartTicket;
+        running = false;
+        paused = false;
         overlay.classList.remove('show');
         resetState();
+        pauseBtn.disabled = true;
+        const canStart = await prepareAssetsForStart(ticket);
+        if (!canStart || ticket !== gameStartTicket) return;
         running = true;
+        paused = false;
+        pauseBtn.disabled = false;
         updatePausePanel();
 
         if (audioCtx) audioCtx.resume?.();
         setMusicEnabled(soundOn);
       }
 
-      function restartGame() {
+      async function restartGame() {
+        const ticket = ++gameStartTicket;
+        running = false;
+        paused = false;
         overlay.classList.remove('show');
         resetState();
+        pauseBtn.disabled = true;
+        const canStart = await prepareAssetsForStart(ticket);
+        if (!canStart || ticket !== gameStartTicket) return;
         running = true;
+        paused = false;
+        pauseBtn.disabled = false;
         updatePausePanel();
 
         if (audioCtx) audioCtx.resume?.();
@@ -1995,6 +2309,108 @@
           text,
           color
         });
+      }
+
+      function spawnImpactFx(fxKey, x, y, r, rot = 0) {
+        if (!FEATURE_FLAGS.USE_IMAGE_FX) return false;
+        const img = getImageOrNull(fxKey);
+        if (!img) return false;
+        const cap = getFxQueueLimit();
+        while (impactFxQueue.length >= cap) impactFxQueue.shift();
+        const baseLife = fxKey === 'fx_star_burst' ? 0.46 : fxKey === 'fx_bug_hit' ? 0.40 : 0.34;
+        const baseScale = fxKey === 'fx_star_burst' ? 2.15 : fxKey === 'fx_bug_hit' ? 1.95 : 1.70;
+        const quality = clamp(runtimeFxQuality, 0.58, 1.0);
+        const lifeMul = quality < 0.72 ? 0.72 : quality < 0.86 ? 0.86 : 1.0;
+        const alphaMul = quality < 0.72 ? 0.78 : quality < 0.86 ? 0.90 : 1.0;
+        impactFxQueue.push({
+          fxKey,
+          x,
+          y,
+          r,
+          rot,
+          life: baseLife * lifeMul,
+          t: 0,
+          alpha: alphaMul,
+          scale: baseScale
+        });
+        return true;
+      }
+
+      function spawnLegacyImpactPop(o) {
+        if (o.kind === 'star') {
+          pop(o.x, o.y, '#ffd670', 34);
+          pop(o.x, o.y, '#ff70a6', 28);
+          pop(o.x, o.y, '#9b5de5', 20);
+          return;
+        }
+        if (o.kind === 'bug') {
+          pop(o.x, o.y, '#d6505d', 24);
+          pop(o.x, o.y, '#78311f', 16);
+          return;
+        }
+        pop(o.x, o.y, o.color, fever ? 30 : 14);
+      }
+
+      function spawnImpactByEvent(o) {
+        const fxKey = getFxKeyForObject(o);
+        if (spawnImpactFx(fxKey, o.x, o.y, o.r, o.rot)) return;
+        spawnLegacyImpactPop(o);
+      }
+
+      function updateImpactFx(dt) {
+        if (!FEATURE_FLAGS.USE_IMAGE_FX) {
+          impactFxQueue.length = 0;
+          return;
+        }
+        for (let i = impactFxQueue.length - 1; i >= 0; i--) {
+          const fx = impactFxQueue[i];
+          fx.t += dt;
+          if (fx.t > fx.life) impactFxQueue.splice(i, 1);
+        }
+      }
+
+      function drawImpactFx() {
+        if (!FEATURE_FLAGS.USE_IMAGE_FX) return;
+        if (!impactFxQueue.length) return;
+        const quality = clamp(runtimeFxQuality, 0.58, 1.0);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        for (const fx of impactFxQueue) {
+          const img = getImageOrNull(fx.fxKey);
+          if (!img) continue;
+          const meta = spriteMeta[fx.fxKey] || {};
+          const collisionRadiusPx = meta.collisionRadiusPx || Math.max(1, (img.naturalWidth || img.width) * 0.5);
+          const scale = (fx.r / collisionRadiusPx) * (meta.drawScale ?? 1) * fx.scale;
+          if (!Number.isFinite(scale) || scale <= 0) continue;
+          let drawW = (img.naturalWidth || img.width) * scale;
+          let drawH = (img.naturalHeight || img.height) * scale;
+          if (drawW <= 0 || drawH <= 0) continue;
+
+          const lifeK = clamp(1 - (fx.t / Math.max(0.0001, fx.life)), 0, 1);
+          const alpha = lifeK * fx.alpha * (quality < 0.72 ? 0.86 : 1.0);
+          if (alpha <= 0.01) continue;
+
+          const raster = getSpriteRaster(fx.fxKey, img, drawW, drawH);
+          if (raster) {
+            drawW = raster.drawW;
+            drawH = raster.drawH;
+          }
+
+          const anchorX = meta.anchorX ?? 0.5;
+          const anchorY = meta.anchorY ?? 0.5;
+          ctx.save();
+          ctx.globalAlpha = alpha;
+          ctx.translate(fx.x, fx.y);
+          ctx.scale(1, drawFixScaleY);
+          ctx.rotate(fx.rot + fx.t * 1.2);
+          if (raster) {
+            ctx.drawImage(raster.canvas, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
+          } else {
+            ctx.drawImage(img, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
+          }
+          ctx.restore();
+        }
+        ctx.restore();
       }
 
       // Collision (match visual basket body)
@@ -2908,6 +3324,53 @@
       }
 
       function drawBasket() {
+        if (!FEATURE_FLAGS.USE_IMAGE_BASKET) {
+          drawBasketFallback();
+          return;
+        }
+        drawBasketSpriteOrFallback();
+      }
+
+      function drawBasketSpriteOrFallback() {
+        const spriteKey = 'basket_default';
+        const img = getImageOrNull(spriteKey);
+        if (!img) {
+          drawBasketFallback();
+          return;
+        }
+
+        const meta = spriteMeta[spriteKey] || {};
+        const anchorX = meta.anchorX ?? 0.5;
+        const anchorY = meta.anchorY ?? 0.5;
+        const scaleX = basket.w / Math.max(1, img.naturalWidth || img.width);
+        const scaleY = basket.h / Math.max(1, img.naturalHeight || img.height);
+        const scale = Math.max(0.0001, Math.min(scaleX, scaleY)) * (meta.drawScale ?? 1);
+        let drawW = (img.naturalWidth || img.width) * scale;
+        let drawH = (img.naturalHeight || img.height) * scale;
+        const raster = getSpriteRaster(spriteKey, img, drawW, drawH);
+        if (raster) {
+          drawW = raster.drawW;
+          drawH = raster.drawH;
+        }
+
+        ctx.save();
+        ctx.translate(basket.x, basket.y);
+        ctx.scale(1, drawFixScaleY);
+        ctx.globalAlpha = 0.26;
+        ctx.fillStyle = '#21344a';
+        ctx.beginPath();
+        ctx.ellipse(0, basket.h * 0.50, basket.w * 0.46, basket.h * 0.22, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.globalAlpha = 1;
+        if (raster) {
+          ctx.drawImage(raster.canvas, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
+        } else {
+          ctx.drawImage(img, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
+        }
+        ctx.restore();
+      }
+
+      function drawBasketFallback() {
         const x = basket.x;
         const y = basket.y;
         const w = basket.w;
@@ -2979,6 +3442,66 @@
       }
 
       function drawObject(o) {
+        if (!FEATURE_FLAGS.USE_IMAGE_SPRITES) {
+          drawObjectFallback(o);
+          return;
+        }
+        drawObjectSpriteOrFallback(o);
+      }
+
+      function drawObjectSpriteOrFallback(o) {
+        const spriteKey = getSpriteKeyForObject(o);
+        if (!spriteKey) {
+          drawObjectFallback(o);
+          return;
+        }
+        const img = getImageOrNull(spriteKey);
+        if (!img) {
+          drawObjectFallback(o);
+          return;
+        }
+
+        const meta = spriteMeta[spriteKey] || {};
+        const collisionRadiusPx = meta.collisionRadiusPx || Math.max(1, (img.naturalWidth || img.width) * 0.5);
+        const scale = (o.r / collisionRadiusPx) * (meta.drawScale ?? 1);
+        if (!Number.isFinite(scale) || scale <= 0) {
+          drawObjectFallback(o);
+          return;
+        }
+
+        let drawW = (img.naturalWidth || img.width) * scale;
+        let drawH = (img.naturalHeight || img.height) * scale;
+        const raster = getSpriteRaster(spriteKey, img, drawW, drawH);
+        if (raster) {
+          drawW = raster.drawW;
+          drawH = raster.drawH;
+        }
+
+        const anchorX = meta.anchorX ?? 0.5;
+        const anchorY = meta.anchorY ?? 0.5;
+        ctx.save();
+        ctx.translate(o.x, o.y);
+        ctx.scale(1, drawFixScaleY);
+        ctx.rotate(o.rot);
+        if (o.kind === 'star') {
+          const glow = ctx.createRadialGradient(0, 0, o.r * 0.08, 0, 0, o.r * 1.5);
+          glow.addColorStop(0, 'rgba(255,250,211,.42)');
+          glow.addColorStop(0.5, 'rgba(255,223,128,.26)');
+          glow.addColorStop(1, 'rgba(255,183,92,0)');
+          ctx.fillStyle = glow;
+          ctx.beginPath();
+          ctx.arc(0, 0, o.r * 1.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        if (raster) {
+          ctx.drawImage(raster.canvas, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
+        } else {
+          ctx.drawImage(img, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
+        }
+        ctx.restore();
+      }
+
+      function drawObjectFallback(o) {
         ctx.save();
         ctx.translate(o.x, o.y);
         ctx.scale(1, drawFixScaleY);
@@ -3152,6 +3675,7 @@
 
         if (running && !paused) {
           totalElapsed += dt;
+          updateBaselineMetrics(dt);
           updateFeverEffects(dt);
 
           // speed multiplier (every 30 sec +10%)
@@ -3212,10 +3736,9 @@
                 fever = true;
                 feverEnd = Math.max(feverEnd, totalElapsed) + FEVER_DURATION;
                 setFeverPhase('enter', totalElapsed, o.x, o.y);
+                playMetrics.feverTriggers += 1;
 
-                pop(o.x, o.y, '#ffd670', 34);
-                pop(o.x, o.y, '#ff70a6', 28);
-                pop(o.x, o.y, '#9b5de5', 20);
+                spawnImpactByEvent(o);
                 addFloatText(o.x, o.y - 10, 'フィーバー！', '#ffd670');
                 triggerFeverHitFeedback(o.x, o.y, '#ffd670');
 
@@ -3227,8 +3750,7 @@
               if (o.kind === 'bug') {
                 misses++;
                 updateHearts();
-                pop(o.x, o.y, '#d6505d', 24);
-                pop(o.x, o.y, '#78311f', 16);
+                spawnImpactByEvent(o);
                 addFloatText(o.x, o.y - 10, 'ダメージ!', '#ff6688');
                 sfx('miss');
                 triggerLifeDamageEffect();
@@ -3245,7 +3767,7 @@
               score += got;
               scoreEl.textContent = String(score);
 
-              pop(o.x, o.y, o.color, fever ? 30 : 14);
+              spawnImpactByEvent(o);
               const scoreText = fever ? `${basePts}×2 = +${got}` : `+${got}`;
               addFloatText(o.x, o.y - 12, scoreText, fever ? '#ffd670' : o.color);
               if (fever) triggerFeverHitFeedback(o.x, o.y, '#ffd670');
@@ -3273,11 +3795,16 @@
           }
         }
 
+        updateImpactFx(dt);
+
         // Draw objects
         for (const o of objects) drawObject(o);
 
         // Draw basket
         drawBasket();
+
+        // Impact FX
+        drawImpactFx();
 
         // Fever foreground FX
         drawFeverSparkLayer();
@@ -3316,6 +3843,8 @@
       }
       updateHearts();
       resetOverlayTextToStart();
+      // Preload in background; startGame/restartGame still applies timeout guard.
+      void loadGameAssets();
       requestAnimationFrame(frame);
 
       // Start with overlay (music off until start)
