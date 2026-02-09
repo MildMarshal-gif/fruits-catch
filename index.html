@@ -904,7 +904,7 @@
           hudScale: 0.83,
           titleScale: 0.84,
           fxDensity: 0.56,
-          fruitScale: 0.90,
+          fruitScale: 1.05,
           basketScale: 0.61,
           pauseScale: 0.78,
           tapTarget: 44
@@ -914,7 +914,7 @@
           hudScale: 0.91,
           titleScale: 0.93,
           fxDensity: 0.78,
-          fruitScale: 0.95,
+          fruitScale: 1.02,
           basketScale: 0.96,
           pauseScale: 0.90,
           tapTarget: 42
@@ -2096,8 +2096,13 @@
         basket.x = minX + normalizedX * Math.max(1, maxX - minX);
         basket.targetX = basket.targetX == null ? null : clamp(basket.targetX, minX, maxX);
 
-        fruitRadiusMin = BASE_FRUIT_RADIUS_MIN * preset.fruitScale;
-        fruitRadiusMax = BASE_FRUIT_RADIUS_MAX * preset.fruitScale;
+        const basketBodyRect = getBasketBodyRect();
+        const basketBodyWidth = Math.max(1, Number.isFinite(basketBodyRect?.w) ? basketBodyRect.w : basket.w);
+        const fruitBaseDiameter = basketBodyWidth * 0.75;
+        const fruitDiameterMin = fruitBaseDiameter * 0.90;
+        const fruitDiameterMax = fruitBaseDiameter * 1.10;
+        fruitRadiusMin = (fruitDiameterMin * preset.fruitScale) / 2;
+        fruitRadiusMax = (fruitDiameterMax * preset.fruitScale) / 2;
       }
 
       let responsiveRaf = null;
@@ -2318,7 +2323,7 @@
         const cap = getFxQueueLimit();
         while (impactFxQueue.length >= cap) impactFxQueue.shift();
         const baseLife = fxKey === 'fx_star_burst' ? 0.46 : fxKey === 'fx_bug_hit' ? 0.40 : 0.34;
-        const baseScale = fxKey === 'fx_star_burst' ? 2.15 : fxKey === 'fx_bug_hit' ? 1.95 : 1.70;
+        const baseScale = fxKey === 'fx_star_burst' ? 2.15 : fxKey === 'fx_bug_hit' ? 1.95 : 1.10;
         const quality = clamp(runtimeFxQuality, 0.58, 1.0);
         const lifeMul = quality < 0.72 ? 0.72 : quality < 0.86 ? 0.86 : 1.0;
         const alphaMul = quality < 0.72 ? 0.78 : quality < 0.86 ? 0.90 : 1.0;
@@ -2374,7 +2379,6 @@
         if (!impactFxQueue.length) return;
         const quality = clamp(runtimeFxQuality, 0.58, 1.0);
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
         for (const fx of impactFxQueue) {
           const img = getImageOrNull(fx.fxKey);
           if (!img) continue;
@@ -2387,7 +2391,9 @@
           if (drawW <= 0 || drawH <= 0) continue;
 
           const lifeK = clamp(1 - (fx.t / Math.max(0.0001, fx.life)), 0, 1);
-          const alpha = lifeK * fx.alpha * (quality < 0.72 ? 0.86 : 1.0);
+          const isFruitPopFx = fx.fxKey === 'fx_fruit_pop';
+          const alphaBase = lifeK * fx.alpha * (quality < 0.72 ? 0.86 : 1.0);
+          const alpha = alphaBase * (isFruitPopFx ? 0.90 : 1.0);
           if (alpha <= 0.01) continue;
 
           const raster = getSpriteRaster(fx.fxKey, img, drawW, drawH);
@@ -2399,6 +2405,10 @@
           const anchorX = meta.anchorX ?? 0.5;
           const anchorY = meta.anchorY ?? 0.5;
           ctx.save();
+          ctx.globalCompositeOperation = isFruitPopFx ? 'source-over' : 'lighter';
+          if (isFruitPopFx) {
+            ctx.filter = 'saturate(1.2) contrast(1.12) brightness(0.94)';
+          }
           ctx.globalAlpha = alpha;
           ctx.translate(fx.x, fx.y);
           ctx.scale(1, drawFixScaleY);
