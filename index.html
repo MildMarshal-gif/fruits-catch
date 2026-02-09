@@ -973,6 +973,7 @@
 
       const FRUIT_MUL_MIN = Math.min(...FRUITS.map((f) => f.mul));
       const FRUIT_MUL_MAX = Math.max(...FRUITS.map((f) => f.mul));
+      const GRAPE_FRUIT = FRUITS.find((f) => f.kind === 'grape');
 
       // Special star
       const STAR = { kind:'star', color:'#ffd670' };
@@ -1078,7 +1079,7 @@
       // `${spriteKey}:${sizeBucket}:${dpr}` -> { canvas, drawW, drawH }
 
       const impactFxQueue = [];
-      // { fxKey, x, y, r, rot, life, t, alpha, scale }
+      // { fxKey, x, y, r, rot, life, t, alpha, scale, tintColor }
 
       const assetLoadMetrics = {
         total: Object.keys(IMAGE_MANIFEST).length,
@@ -2316,14 +2317,14 @@
         });
       }
 
-      function spawnImpactFx(fxKey, x, y, r, rot = 0) {
+      function spawnImpactFx(fxKey, x, y, r, rot = 0, options = null) {
         if (!FEATURE_FLAGS.USE_IMAGE_FX) return false;
         const img = getImageOrNull(fxKey);
         if (!img) return false;
         const cap = getFxQueueLimit();
         while (impactFxQueue.length >= cap) impactFxQueue.shift();
         const baseLife = fxKey === 'fx_star_burst' ? 0.46 : fxKey === 'fx_bug_hit' ? 0.40 : 0.34;
-        const baseScale = fxKey === 'fx_star_burst' ? 2.15 : fxKey === 'fx_bug_hit' ? 1.95 : 1.10;
+        const baseScale = fxKey === 'fx_star_burst' ? 2.15 : fxKey === 'fx_bug_hit' ? 1.95 : 1.00;
         const quality = clamp(runtimeFxQuality, 0.58, 1.0);
         const lifeMul = quality < 0.72 ? 0.72 : quality < 0.86 ? 0.86 : 1.0;
         const alphaMul = quality < 0.72 ? 0.78 : quality < 0.86 ? 0.90 : 1.0;
@@ -2336,7 +2337,8 @@
           life: baseLife * lifeMul,
           t: 0,
           alpha: alphaMul,
-          scale: baseScale
+          scale: baseScale,
+          tintColor: options?.tintColor || null
         });
         return true;
       }
@@ -2358,7 +2360,10 @@
 
       function spawnImpactByEvent(o) {
         const fxKey = getFxKeyForObject(o);
-        if (spawnImpactFx(fxKey, o.x, o.y, o.r, o.rot)) return;
+        const tintColor = o.kind === 'fruit'
+          ? (o.fruitKind === 'watermelon' ? '#ff1a1a' : getFruitStyle(o.fruitKind).base)
+          : null;
+        if (spawnImpactFx(fxKey, o.x, o.y, o.r, o.rot, { tintColor })) return;
         spawnLegacyImpactPop(o);
       }
 
@@ -2392,6 +2397,7 @@
 
           const lifeK = clamp(1 - (fx.t / Math.max(0.0001, fx.life)), 0, 1);
           const isFruitPopFx = fx.fxKey === 'fx_fruit_pop';
+          const keepRawFxColor = fx.fxKey === 'fx_star_burst' || fx.fxKey === 'fx_bug_hit';
           const alphaBase = lifeK * fx.alpha * (quality < 0.72 ? 0.86 : 1.0);
           const alpha = alphaBase * (isFruitPopFx ? 0.90 : 1.0);
           if (alpha <= 0.01) continue;
@@ -2405,7 +2411,7 @@
           const anchorX = meta.anchorX ?? 0.5;
           const anchorY = meta.anchorY ?? 0.5;
           ctx.save();
-          ctx.globalCompositeOperation = isFruitPopFx ? 'source-over' : 'lighter';
+          ctx.globalCompositeOperation = (isFruitPopFx || keepRawFxColor) ? 'source-over' : 'lighter';
           if (isFruitPopFx) {
             ctx.filter = 'saturate(1.2) contrast(1.12) brightness(0.94)';
           }
@@ -2417,6 +2423,15 @@
             ctx.drawImage(raster.canvas, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
           } else {
             ctx.drawImage(img, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
+          }
+          if (isFruitPopFx && fx.tintColor) {
+            const drawX = -drawW * anchorX;
+            const drawY = -drawH * anchorY;
+            ctx.filter = 'none';
+            ctx.globalCompositeOperation = 'source-atop';
+            ctx.globalAlpha = alpha * 0.42;
+            ctx.fillStyle = fx.tintColor;
+            ctx.fillRect(drawX, drawY, drawW, drawH);
           }
           ctx.restore();
         }
@@ -2485,7 +2500,7 @@
         const isHazard = !isStar && roll < (starChance + hazardChance);
 
         if (isStar) {
-          const r = clamp((fruitRadiusMin + fruitRadiusMax) * 0.44, 18, 36);
+          const r = GRAPE_FRUIT ? getFruitRadiusForMul(GRAPE_FRUIT.mul) : clamp((fruitRadiusMin + fruitRadiusMax) * 0.44, 18, 36);
           const x = rand(r + 18, canvas.width - r - 18);
           objects.push({
             kind: 'star',
