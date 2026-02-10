@@ -1,52 +1,20 @@
-# フォント運用ルール（A案）
+# 現在使われているフォント一覧
 
-`index.html` のタイポグラフィは、可愛さと誤読耐性の両立を目的に以下へ統一する。
+このドキュメントは、`index.html` で現在指定されているフォントと使用箇所の対応表。
 
-## 採用フォント
+## フォントと使用箇所
 
-- 英文見出し: `Nunito`
-- 英文本文/UI: `Atkinson Hyperlegible`
-- 和文見出し: `M PLUS Rounded 1c`
-- 和文本文/UI: `M PLUS 1p`
+| フォント名 | 種別 | 指定箇所 | 主な用途 | 文字列例 |
+| --- | --- | --- | --- | --- |
+| `Dela Gothic One` | Webフォント | `index.html:499`, `index.html:563` | 見出し（`.pause-title`, `.title`） | `一時停止`, `FRUIT CATCH`, `ゲームオーバー` |
+| `M PLUS Rounded 1c` | Webフォント | `index.html:53`, `index.html:3100` | 本文・ボタン・HUD全般、canvasの浮遊テキスト | `スタート！`, `サウンド: オン`, `続けるか、最初からやり直すか選んでね`, `フィーバー！`, `ダメージ!` |
+| `Hiragino Maru Gothic ProN` | フォールバック | `index.html:53` | `M PLUS Rounded 1c` 非対応時の代替表示 | `一時停止`, `右上の「一時停止」でいつでも止められる` |
+| `Yu Gothic UI` | フォールバック | `index.html:53` | 同上（代替表示） | `リスタート`, `再開` |
+| `Meiryo` | フォールバック | `index.html:53` | 同上（代替表示） | `スマホでサッと遊べるフルーツキャッチ！` |
+| `system-ui` | フォールバック | `index.html:53` | OS標準フォントへの最終フォールバック | `Score`, `Life` |
+| `sans-serif` | 汎用ファミリー | `index.html:53`, `index.html:499`, `index.html:563`, `index.html:3100` | 指定フォントが利用不可の際の最終代替 | `Fever` |
 
-## CSSトークン
+## 補足
 
-`index.html` の `:root` で以下を管理する。
-
-- フォントトークン
-- `--font-heading-latin`
-- `--font-body-latin`
-- `--font-ui-latin`
-- `--font-heading-ja`
-- `--font-body-ja`
-- `--font-ui-ja`
-- タイポトークン
-- `--tracking-heading: 0.01em`
-- `--leading-heading: 1.18`
-- `--tracking-body: 0.015em`
-- `--leading-body: 1.55`
-- `--tracking-ui: 0.04em`
-- `--leading-ui: 1.20`
-
-## 運用基準
-
-- 推奨ウェイト: `400 / 500 / 700 / 800 / 900`
-- 見出しは `700+` を基準（タイトル系は `800`）
-- 本文は最小 `14px`、行間 `1.5+` を維持
-- 英数字主体のUI（スコア、倍率、タイマー、数値ポップ）は `Atkinson Hyperlegible` 固定
-- 数値は `font-variant-numeric: tabular-nums lining-nums` を使用
-
-## 言語境界ルール
-
-- 原則は `lang` 属性で境界を明示する
-- 英文ラベル: `lang="en"` を付与（例: `Score`, `Life`, `Fever`, `FRUIT CATCH`）
-- 英数字専用UI: `.latin` と `lang="en"` を併用（例: `#score`, `#scoreMul`, `#feverTime`）
-- 和文は `html[lang="ja"]` を基準にし、必要に応じて `lang="ja"` を明示する
-
-## 変更時チェックリスト
-
-- `I/l/1` が混同しないか
-- `O/0` が混同しないか
-- `シ/ツ` が潰れて見えないか
-- `ソ/ン` が潰れて見えないか
-- スコア/倍率/タイマーが瞬時に読めるか
+- `button` は `font-family: inherit`（`index.html:361`）のため、親要素（実質 `body`）のフォント設定を継承する。
+- 見出しは `Dela Gothic One` を先頭に指定し、未利用時は `M PLUS Rounded 1c` -> `sans-serif` の順でフォールバックする。

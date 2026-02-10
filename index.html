@@ -7,7 +7,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=M+PLUS+1p:wght@400;500;700;800;900&family=M+PLUS+Rounded+1c:wght@400;500;700;800;900&family=Nunito:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet">
 
   <style>
     :root{
@@ -42,46 +42,23 @@
       --tap-target:44px;
       --hud-inset-top:14px;
       --hud-inset-side:14px;
-      --text-leading:1.55;
+      --text-leading:1.35;
       --shell-radius:32px;
-      --font-heading-latin:"Nunito","Atkinson Hyperlegible","Segoe UI",system-ui,sans-serif;
-      --font-body-latin:"Atkinson Hyperlegible","Nunito","Segoe UI",system-ui,sans-serif;
-      --font-ui-latin:var(--font-body-latin);
-      --font-heading-ja:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",sans-serif;
-      --font-body-ja:"M PLUS 1p","Hiragino Sans","Yu Gothic UI","Meiryo",sans-serif;
-      --font-ui-ja:var(--font-body-ja);
-      --tracking-heading:0.01em;
-      --leading-heading:1.18;
-      --tracking-body:0.015em;
-      --leading-body:1.55;
-      --tracking-ui:0.04em;
-      --leading-ui:1.20;
     }
 
     *{ box-sizing:border-box; }
     html,body{ height:100%; margin:0; }
 
     body{
-      font-family:var(--font-body-ja);
+      font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
       display:grid;
       place-items:center;
       overflow:hidden;
       color:var(--shell-ink);
-      line-height:var(--leading-body);
-      letter-spacing:var(--tracking-body);
       background:
         radial-gradient(1300px 650px at -6% -8%, #ffffffc9 0 36%, transparent 37%),
         radial-gradient(1100px 560px at 108% 6%, #fff7d9bf 0 38%, transparent 39%),
         linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 54%, var(--sky-bottom) 100%);
-    }
-
-    :lang(ja){
-      font-family:var(--font-body-ja);
-    }
-
-    :lang(en),
-    .latin{
-      font-family:var(--font-body-latin);
     }
 
     body::before,
@@ -192,23 +169,15 @@
 
     .stat-label{
       font-size:calc(12px * var(--hud-scale));
-      line-height:var(--leading-ui);
-      font-weight:700;
-      letter-spacing:var(--tracking-ui);
+      line-height:1.1;
+      font-weight:900;
+      letter-spacing:.9px;
       text-transform:uppercase;
       color:var(--shell-ink-soft);
       opacity:.9;
-      font-family:var(--font-ui-ja);
       text-shadow:
         0 1px 0 rgba(255,255,255,.76),
         0 2px 6px rgba(25,40,60,.18);
-    }
-
-    :lang(en).stat-label,
-    :lang(en).badge-label,
-    :lang(en).badge-tail,
-    :lang(en).ui-label{
-      font-family:var(--font-ui-latin);
     }
 
     .stat-value{
@@ -276,9 +245,9 @@
       background:linear-gradient(180deg, #fffef8, #ece9e2);
       color:#5b5664;
       font-size:calc(16px * var(--hud-scale));
-      line-height:var(--leading-ui);
+      line-height:1;
       font-weight:900;
-      letter-spacing:var(--tracking-ui);
+      letter-spacing:.2px;
       box-shadow:
         0 2px 0 rgba(255,255,255,.95) inset,
         0 2px 8px rgba(28,35,53,.18);
@@ -331,14 +300,6 @@
       transform-origin:center;
       transition:transform .09s linear, text-shadow .09s linear, color .18s ease, filter .1s linear;
       white-space:nowrap;
-    }
-
-    .score-card .stat-value,
-    #score,
-    #scoreMul,
-    .badge .badge-time{
-      font-family:var(--font-ui-latin);
-      font-variant-numeric:tabular-nums lining-nums;
     }
 
     .hearts{
@@ -397,11 +358,10 @@
       min-height:var(--tap-target);
       min-width:var(--tap-target);
       padding:calc(10px * var(--ui-scale)) calc(16px * var(--ui-scale));
-      font-family:var(--font-ui-ja);
+      font-family:inherit;
       font-size:calc(14px * var(--ui-scale));
-      line-height:var(--leading-ui);
-      font-weight:700;
-      letter-spacing:var(--tracking-ui);
+      line-height:1.15;
+      font-weight:900;
       color:var(--shell-ink);
       background:linear-gradient(180deg, #fffef9, #ffeeda);
       box-shadow:0 8px 18px rgba(32,48,73,.2);
@@ -441,13 +401,12 @@
       border:2px solid var(--panel-border);
       box-shadow:var(--shadow-soft);
       font-size:calc(14px * var(--hud-scale));
-      line-height:var(--leading-ui);
-      font-weight:700;
+      line-height:1;
+      font-weight:900;
       color:var(--shell-ink);
       pointer-events:none;
       max-width:min(76vw, 360px);
       width:fit-content;
-      font-family:var(--font-ui-ja);
       text-shadow:
         0 1px 0 rgba(255,255,255,.72),
         0 2px 6px rgba(25,40,60,.18);
@@ -463,8 +422,7 @@
 
     .badge .badge-label{
       text-transform:uppercase;
-      letter-spacing:var(--tracking-ui);
-      line-height:var(--leading-ui);
+      letter-spacing:.8px;
       opacity:.85;
     }
 
@@ -478,8 +436,6 @@
     .badge .badge-tail{
       opacity:.7;
       font-size:calc(12px * var(--hud-scale));
-      letter-spacing:var(--tracking-ui);
-      line-height:var(--leading-ui);
     }
 
     .badge.fever-neon{
@@ -537,22 +493,17 @@
     .pause-title{
       margin:0;
       font-size:calc(32px * var(--title-scale));
-      line-height:var(--leading-heading);
+      line-height:1.16;
       color:#294770;
       text-shadow:0 2px 0 #ffffffd5;
-      font-family:var(--font-heading-ja);
-      font-weight:800;
-      letter-spacing:var(--tracking-heading);
+      font-family:"Dela Gothic One","M PLUS Rounded 1c",sans-serif;
     }
 
     .pause-desc{
       margin:12px 0 14px;
-      font-size:max(14px, calc(14px * var(--ui-scale)));
-      font-weight:500;
-      line-height:var(--leading-body);
-      letter-spacing:var(--tracking-body);
+      font-size:calc(14px * var(--ui-scale));
+      font-weight:900;
       color:#365a84;
-      font-family:var(--font-body-ja);
     }
 
     .pause-actions{
@@ -609,28 +560,20 @@
 
     .title{
       margin:0 0 calc(10px * var(--ui-scale));
-      font-family:var(--font-heading-ja);
+      font-family:"Dela Gothic One","M PLUS Rounded 1c",sans-serif;
       font-size:calc(35px * var(--title-scale));
-      line-height:var(--leading-heading);
+      line-height:1.15;
       color:#ff4e94;
-      letter-spacing:var(--tracking-heading);
+      letter-spacing:.4px;
       text-shadow:0 3px 0 #ffffffd6;
-      font-weight:800;
-    }
-
-    :lang(en).title,
-    :lang(en).pause-title{
-      font-family:var(--font-heading-latin);
     }
 
     .subtitle{
       margin:0 0 calc(14px * var(--ui-scale));
-      font-size:max(14px, calc(16px * var(--ui-scale)));
-      line-height:var(--leading-body);
-      font-weight:500;
+      font-size:calc(16px * var(--ui-scale));
+      line-height:1.42;
+      font-weight:900;
       color:#2f4b69;
-      letter-spacing:var(--tracking-body);
-      font-family:var(--font-body-ja);
     }
 
     .how{
@@ -640,12 +583,10 @@
       border:2px dashed #ffca7f;
       background:
         linear-gradient(90deg, #ffe5f2d9 0%, #fff1d5e0 45%, #e5ffdbe0 100%);
-      font-size:max(14px, calc(15px * var(--ui-scale)));
-      font-weight:500;
-      line-height:var(--leading-body);
+      font-size:calc(15px * var(--ui-scale));
+      font-weight:900;
+      line-height:1.52;
       color:#29435f;
-      letter-spacing:var(--tracking-body);
-      font-family:var(--font-body-ja);
     }
 
     .stack{
@@ -671,14 +612,12 @@
     }
 
     .note{
-      font-size:max(14px, calc(14px * var(--ui-scale)));
-      font-weight:400;
+      font-size:calc(12px * var(--ui-scale));
+      font-weight:900;
       color:#496683;
       opacity:.84;
       margin-top:calc(10px * var(--ui-scale));
-      line-height:var(--leading-body);
-      letter-spacing:var(--tracking-body);
-      font-family:var(--font-body-ja);
+      line-height:1.45;
     }
 
     :root[data-device="mobile"] .hud{
@@ -874,17 +813,17 @@
     <div class="hud">
       <div class="hud-main">
         <div class="stat-card score-card" aria-label="スコア">
-          <span class="stat-label ui-label" lang="en">Score</span>
+          <span class="stat-label">Score</span>
           <span class="stat-value">
             <span class="score-shell">
-              <span id="score" class="latin" lang="en">0</span>
-              <span id="scoreMul" class="score-multiplier latin" lang="en" aria-hidden="true">×2</span>
+              <span id="score">0</span>
+              <span id="scoreMul" class="score-multiplier" aria-hidden="true">×2</span>
             </span>
           </span>
         </div>
 
         <div class="stat-card" aria-label="ライフ">
-          <span class="stat-label ui-label" lang="en">Life</span>
+          <span class="stat-label">Life</span>
           <span class="stat-value">
             <span class="hearts" id="hearts"></span>
           </span>
@@ -898,8 +837,8 @@
 
         <div class="badge" id="feverBadge" aria-live="polite">
           <span class="spark" aria-hidden="true">✦</span>
-          <span class="badge-label ui-label" lang="en">Fever</span>
-          <span id="feverTime" class="badge-time latin" lang="en">20.0s</span>
+          <span class="badge-label">Fever</span>
+          <span id="feverTime" class="badge-time">20.0s</span>
           <span class="badge-tail">残り</span>
         </div>
       </div>
@@ -918,7 +857,7 @@
 
     <div class="overlay show" id="overlay">
       <div class="card">
-        <h1 class="title" lang="en">FRUIT CATCH</h1>
+        <h1 class="title">FRUIT CATCH</h1>
         <p class="subtitle">スマホでサッと遊べるフルーツキャッチ！</p>
         <div class="how">
           画面を左右になぞってカゴを移動<br/>
@@ -947,8 +886,6 @@
       const heartsEl = document.getElementById('hearts');
       const wrapEl = document.querySelector('.wrap');
       const overlay = document.getElementById('overlay');
-      const overlayTitleEl = overlay.querySelector('.title');
-      const overlaySubtitleEl = overlay.querySelector('.subtitle');
       const pausePanel = document.getElementById('pausePanel');
       const startBtn = document.getElementById('startBtn');
       const resumeBtn = document.getElementById('resumeBtn');
@@ -960,8 +897,6 @@
       const root = document.documentElement;
       const reducedMotionQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
       const coarsePointerQuery = window.matchMedia('(pointer:coarse)');
-      const FONT_STACK_UI_LATIN = '"Atkinson Hyperlegible","Nunito","Segoe UI",system-ui,sans-serif';
-      const FONT_STACK_HEADING_JA = '"M PLUS Rounded 1c","M PLUS 1p","Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",sans-serif';
 
       const DEVICE_PRESETS = {
         mobile: {
@@ -2210,10 +2145,8 @@
       }
 
       function resetOverlayTextToStart() {
-        overlayTitleEl.textContent = 'FRUIT CATCH';
-        overlayTitleEl.lang = 'en';
-        overlaySubtitleEl.textContent = 'スマホでサッと遊べるフルーツキャッチ！';
-        overlaySubtitleEl.lang = 'ja';
+        overlay.querySelector('.title').textContent = 'FRUIT CATCH';
+        overlay.querySelector('.subtitle').textContent = 'スマホでサッと遊べるフルーツキャッチ！';
         overlay.querySelector('.how').innerHTML =
           `画面を左右になぞってカゴを移動<br/>
            指1本でOK（片手プレイ向け）<br/>
@@ -2348,10 +2281,8 @@
 
         if (music) music.setEnabled(false);
 
-        overlayTitleEl.textContent = 'ゲームオーバー';
-        overlayTitleEl.lang = 'ja';
-        overlaySubtitleEl.textContent = `スコア: ${score}`;
-        overlaySubtitleEl.lang = 'ja';
+        overlay.querySelector('.title').textContent = 'ゲームオーバー';
+        overlay.querySelector('.subtitle').textContent = `スコア: ${score}`;
         overlay.querySelector('.how').innerHTML = `おつかれさま！<br/>もう一度遊ぶ？`;
         startBtn.textContent = 'もう一回';
         overlay.classList.add('show');
@@ -2376,15 +2307,13 @@
       }
 
       function addFloatText(x, y, text, color) {
-        const useLatin = /[A-Za-z0-9]/.test(text);
         floatTexts.push({
           x, y,
           vy: -90,
           t: 0,
           life: 0.85,
           text,
-          color,
-          useLatin
+          color
         });
       }
 
@@ -3775,9 +3704,7 @@
           ctx.translate(ft.x, ft.y);
           ctx.scale(1, drawFixScaleY);
           const fontSize = Math.max(20, Math.round(30 * floatTextScale));
-          const fontWeight = ft.useLatin ? 800 : 900;
-          const fontFamily = ft.useLatin ? FONT_STACK_UI_LATIN : FONT_STACK_HEADING_JA;
-          ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+          ctx.font = `900 ${fontSize}px "M PLUS Rounded 1c",sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
