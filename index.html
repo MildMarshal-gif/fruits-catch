@@ -7,7 +7,7 @@
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&family=M+PLUS+Rounded+1c:wght@700;800;900&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@700;800;900&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
 
   <style>
     :root{
@@ -50,7 +50,7 @@
     html,body{ height:100%; margin:0; }
 
     body{
-      font-family:"M PLUS Rounded 1c","Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
+      font-family:"M PLUS Rounded 1c","Zen Maru Gothic","Kosugi Maru","Hiragino Maru Gothic ProN","Yu Gothic UI","Meiryo",system-ui,sans-serif;
       display:grid;
       place-items:center;
       overflow:hidden;
@@ -496,7 +496,7 @@
       line-height:1.16;
       color:#294770;
       text-shadow:0 2px 0 #ffffffd5;
-      font-family:"Dela Gothic One","M PLUS Rounded 1c",sans-serif;
+      font-family:"M PLUS Rounded 1c","Zen Maru Gothic","Kosugi Maru",sans-serif;
     }
 
     .pause-desc{
@@ -560,7 +560,7 @@
 
     .title{
       margin:0 0 calc(10px * var(--ui-scale));
-      font-family:"Dela Gothic One","M PLUS Rounded 1c",sans-serif;
+      font-family:"M PLUS Rounded 1c","Zen Maru Gothic","Kosugi Maru",sans-serif;
       font-size:calc(35px * var(--title-scale));
       line-height:1.15;
       color:#ff4e94;
@@ -3704,7 +3704,7 @@
           ctx.translate(ft.x, ft.y);
           ctx.scale(1, drawFixScaleY);
           const fontSize = Math.max(20, Math.round(30 * floatTextScale));
-          ctx.font = `900 ${fontSize}px "M PLUS Rounded 1c",sans-serif`;
+          ctx.font = `900 ${fontSize}px "M PLUS Rounded 1c","Zen Maru Gothic",system-ui,sans-serif`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
