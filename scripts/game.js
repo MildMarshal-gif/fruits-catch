@@ -71,7 +71,7 @@
       let rotationMotionScale = 1;
       let floatTextScale = 1;
       let drawFixScaleY = 1;
-      let canvasBodyFontFamily = '"FCMgenPlus1ppMedium", sans-serif';
+      let canvasBodyFontFamily = '"FCRoundedLMgenPlus1pMedium", sans-serif';
       let canvasBodyFontWeight = '500';
 
       function syncCanvasBodyFontTokens() {
@@ -81,7 +81,7 @@
         const familyFromCanvas = styles.getPropertyValue('--font-family-body-canvas').trim();
         const familyFromBody = styles.getPropertyValue('--font-family-body').trim();
         const weightFromBody = styles.getPropertyValue('--font-weight-body').trim();
-        canvasBodyFontFamily = familyFromCanvas || familyFromBody || '"FCMgenPlus1ppMedium", sans-serif';
+        canvasBodyFontFamily = familyFromCanvas || familyFromBody || '"FCRoundedLMgenPlus1pMedium", sans-serif';
         canvasBodyFontWeight = weightFromBody || '500';
       }
 
