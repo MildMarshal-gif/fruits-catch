@@ -1,0 +1,46 @@
+@font-face {
+  font-family: "FCPoprumCute";
+  src: url("../assets/fonts/poprumcute/PopRumCute.otf") format("opentype");
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FCRoundedXMplus1pBlack";
+  src: url("../assets/fonts/rounded-x-mplus/rounded-x-mplus-1p-black.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "FCMgenPlus1ppMedium";
+  src: url("../assets/fonts/mgenplus-1p/mgenplus-1pp-medium.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+}
+
+:root {
+  --font-family-heading-brand: "FCPoprumCute", "FCRoundedXMplus1pBlack", sans-serif;
+  --font-family-heading-sub: "FCRoundedXMplus1pBlack", sans-serif;
+  --font-family-body: "FCMgenPlus1ppMedium", sans-serif;
+  --font-family-body-canvas: "FCMgenPlus1ppMedium", sans-serif;
+
+  --font-weight-heading-brand: 400;
+  --font-weight-heading-sub: 900;
+  --font-weight-body: 500;
+
+  --font-line-height-body: 1.52;
+}
+
+/*
+  Public fallback switch:
+  If PopRumCute cannot be used in a public build, set
+  documentElement.dataset.releaseChannel = "public-fallback".
+*/
+:root[data-release-channel="public-fallback"] {
+  --font-family-heading-brand: "FCRoundedXMplus1pBlack", sans-serif;
+  --font-weight-heading-brand: 900;
+}

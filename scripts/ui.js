@@ -113,7 +113,11 @@
   }
 
   function resetOverlayTextToStart({ overlay, startBtn }) {
-    overlay.querySelector('.title').textContent = 'FRUIT CATCH';
+    const titleEl = overlay.querySelector('.title');
+    if (titleEl) {
+      titleEl.textContent = 'FRUIT CATCH';
+      titleEl.setAttribute('data-title-role', 'brand');
+    }
     overlay.querySelector('.subtitle').textContent = 'スマホでサッと遊べるフルーツキャッチ！';
     overlay.querySelector('.how').innerHTML =
       `画面を左右になぞってカゴを移動<br/>
@@ -124,7 +128,11 @@
   }
 
   function showGameOverOverlay({ overlay, startBtn, score }) {
-    overlay.querySelector('.title').textContent = 'ゲームオーバー';
+    const titleEl = overlay.querySelector('.title');
+    if (titleEl) {
+      titleEl.textContent = 'ゲームオーバー';
+      titleEl.setAttribute('data-title-role', 'sub');
+    }
     overlay.querySelector('.subtitle').textContent = `スコア: ${score}`;
     overlay.querySelector('.how').innerHTML = 'おつかれさま！<br/>もう一度遊ぶ？';
     startBtn.textContent = 'もう一回';

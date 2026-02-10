@@ -71,6 +71,19 @@
       let rotationMotionScale = 1;
       let floatTextScale = 1;
       let drawFixScaleY = 1;
+      let canvasBodyFontFamily = '"FCMgenPlus1ppMedium", sans-serif';
+      let canvasBodyFontWeight = '500';
+
+      function syncCanvasBodyFontTokens() {
+        const targetRoot = root || document.documentElement;
+        if (!targetRoot || typeof getComputedStyle !== 'function') return;
+        const styles = getComputedStyle(targetRoot);
+        const familyFromCanvas = styles.getPropertyValue('--font-family-body-canvas').trim();
+        const familyFromBody = styles.getPropertyValue('--font-family-body').trim();
+        const weightFromBody = styles.getPropertyValue('--font-weight-body').trim();
+        canvasBodyFontFamily = familyFromCanvas || familyFromBody || '"FCMgenPlus1ppMedium", sans-serif';
+        canvasBodyFontWeight = weightFromBody || '500';
+      }
 
       // Game constants
       const MAX_MISSES = FC.constants.MAX_MISSES;
@@ -2824,7 +2837,7 @@
           ctx.translate(ft.x, ft.y);
           ctx.scale(1, drawFixScaleY);
           const fontSize = Math.max(20, Math.round(30 * floatTextScale));
-          ctx.font = `900 ${fontSize}px "M PLUS Rounded 1c","Zen Maru Gothic",system-ui,sans-serif`;
+          ctx.font = `${canvasBodyFontWeight} ${fontSize}px ${canvasBodyFontFamily}`;
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
 
@@ -3034,6 +3047,7 @@
 
       // Init
       applyResponsiveProfile();
+      syncCanvasBodyFontTokens();
       window.addEventListener('resize', scheduleResponsiveProfileApply, {passive:true});
       window.addEventListener('orientationchange', scheduleResponsiveProfileApply, {passive:true});
       if (typeof reducedMotionQuery.addEventListener === 'function') {
