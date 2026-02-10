@@ -160,7 +160,7 @@
     .stat-label{
       font-size:calc(12px * var(--hud-scale));
       line-height:1.2;
-      font-weight:var(--font-weight-body-strong);
+      font-weight:var(--font-weight-heading-sub);
       letter-spacing:.9px;
       text-transform:uppercase;
       color:var(--shell-ink-soft);
