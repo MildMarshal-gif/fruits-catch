@@ -22,6 +22,14 @@
   font-display: swap;
 }
 
+@font-face {
+  font-family: "FCRoundedXMplus1p";
+  src: url("../assets/fonts/rounded-x-mplus/rounded-x-mplus-1p-bold.ttf") format("truetype");
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+}
+
 :root {
   --font-family-heading-brand: "FCPoprumCute", "FCRoundedXMplus1p", sans-serif;
   --font-family-heading-sub: "FCRoundedXMplus1p", sans-serif;
@@ -32,6 +40,7 @@
   --font-weight-heading-sub: 900;
   --font-weight-body: 500;
   --font-weight-button: 700;
+  --font-weight-body-strong: 700;
 
   --font-line-height-body: 1.52;
 }

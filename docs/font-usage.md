@@ -16,17 +16,20 @@ Reference only:
 | Heading brand (`FRUIT CATCH`) | `poprumcute.zip` | `https://moji-waku.com/download/poprumcute.zip` | `poprumcute/PopRumCute.otf` | `--font-family-heading-brand` |
 | Heading sub (`一時停止` / `ゲームオーバー`) | `rounded-x-mplus-20150529.zip` | `C:/Users/test-user/Desktop/素材/font/rounded-x-mplus-20150529.zip` | `rounded-x-mplus-1p-black.ttf` | `--font-family-heading-sub` |
 | Body (all non-headings: HUD, buttons, descriptions, numbers, canvas float text) | `rounded-x-mplus-20150529.zip` | `C:/Users/test-user/Desktop/素材/font/rounded-x-mplus-20150529.zip` | `rounded-x-mplus-1p-medium.ttf` | `--font-family-body` / `--font-family-body-canvas` |
+| UI strong body (buttons, SCORE/LIFE labels, fever timer texts) | `rounded-x-mplus-20150529.zip` | `C:/Users/test-user/Desktop/素材/font/rounded-x-mplus-20150529.zip` | `rounded-x-mplus-1p-bold.ttf` | `--font-weight-button` / `--font-weight-body-strong` |
 
 ## Weight and line-height
 - Brand: standard -> `--font-weight-heading-brand: 400`
 - Sub heading: `1p-BLACK` -> `--font-weight-heading-sub: 900`
 - Body: `1p-medium` -> `--font-weight-body: 500`
 - Button text: bold -> `--font-weight-button: 700`
+- SCORE/LIFE labels and fever timer texts: bold -> `--font-weight-body-strong: 700`
 - Body line-height -> `--font-line-height-body: 1.52`
 
 ## Bundled adopted font files
 - `assets/fonts/poprumcute/PopRumCute.otf`
 - `assets/fonts/rounded-x-mplus/rounded-x-mplus-1p-black.ttf`
+- `assets/fonts/rounded-x-mplus/rounded-x-mplus-1p-bold.ttf`
 - `assets/fonts/rounded-x-mplus/rounded-x-mplus-1p-medium.ttf`
 
 ## Bundled license files

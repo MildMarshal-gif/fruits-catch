@@ -160,7 +160,7 @@
     .stat-label{
       font-size:calc(12px * var(--hud-scale));
       line-height:1.2;
-      font-weight:var(--font-weight-body);
+      font-weight:var(--font-weight-body-strong);
       letter-spacing:.9px;
       text-transform:uppercase;
       color:var(--shell-ink-soft);
@@ -392,7 +392,7 @@
       box-shadow:var(--shadow-soft);
       font-size:calc(14px * var(--hud-scale));
       line-height:var(--font-line-height-body);
-      font-weight:var(--font-weight-body);
+      font-weight:var(--font-weight-body-strong);
       color:var(--shell-ink);
       pointer-events:none;
       max-width:min(76vw, 360px);
@@ -562,6 +562,7 @@
     .title:not([data-title-role]){
       font-family:var(--font-family-heading-brand);
       font-weight:var(--font-weight-heading-brand);
+      font-size:calc(42px * var(--title-scale));
     }
 
     .title[data-title-role="sub"],
