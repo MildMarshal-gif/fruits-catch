@@ -1127,7 +1127,6 @@
       }
 
       function applyResponsiveProfile() {
-        const width = window.innerWidth;
         const dpr = window.devicePixelRatio || 1;
         const coarsePointer = coarsePointerQuery.matches;
         const reducedMotion = reducedMotionQuery.matches;
@@ -1200,8 +1199,10 @@
         const fx = clamp(preset.fxDensity * dprFxPenalty * reducedFxMul, 0.18, 1.00);
         const pauseScale = clamp(preset.pauseScale * motionScale, 0.62, 1.02);
         const tapTargetPx = Math.max(preset.tapTarget, coarsePointer ? 44 : preset.tapTarget);
-        const hudTop = width <= 700 ? 10 : 14;
-        const hudSide = width <= 700 ? 8 : 14;
+        // Keep HUD anchor stable across mobile/desktop with one viewport-based rule.
+        const shortEdge = Math.max(320, Math.min(window.innerWidth, window.innerHeight));
+        const hudTop = Math.round(clamp(shortEdge * 0.017, 8, 14));
+        const hudSide = Math.round(clamp(shortEdge * 0.015, 8, 14));
 
         root.dataset.device = deviceType;
         root.dataset.motion = reducedMotion ? 'reduced' : 'full';
