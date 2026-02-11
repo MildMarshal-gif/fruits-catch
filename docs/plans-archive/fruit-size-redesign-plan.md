@@ -1,5 +1,7 @@
 ﻿# Fruit Size Redesign Plan (Basket基準・最小差分)
 
+実行ステータス: 実行済み
+
 結論: フルーツ半径の算出元だけをバスケット可視本体幅基準へ切り替える。端末差は最終係数（mobile +5%, tablet +2%, desktop 0%）のみで吸収する。
 結論: `index.html`中心の最小差分で、既存の`getFruitRadiusForMul`と`spawnObject`の流れは維持する。
 
