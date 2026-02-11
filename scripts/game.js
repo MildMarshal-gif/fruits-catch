@@ -214,8 +214,11 @@
       };
 
       const SPRITE_RASTER_CACHE_MAX = 64;
+      const FX_FRUIT_POP_TINT_ALPHA_CUTOFF = 6;
       const spriteRasterCache = new Map();
       // `${spriteKey}:${sizeBucket}:${dpr}` -> { canvas, drawW, drawH }
+      const fruitPopTintSourceCache = new Map();
+      // `#rrggbb` -> tinted canvas source for fx_fruit_pop
 
       const impactFxQueue = [];
       // { fxKey, x, y, r, rot, life, t, alpha, scale, tintColor }
@@ -679,6 +682,7 @@
         assetLoadPromise = Promise.allSettled(
           Object.keys(IMAGE_MANIFEST).map((key) => loadImageAssetWithRetry(key))
         ).then((results) => {
+          primeFruitPopTintSources();
           refreshAssetLoadMetrics();
           assetLoadMetrics.preloadElapsedMs = performance.now() - startedAt;
           return results;
@@ -726,6 +730,88 @@
         if (device === 'mobile') return FX_MAX_ACTIVE_MOBILE;
         if (device === 'tablet') return FX_MAX_ACTIVE_TABLET;
         return FX_MAX_ACTIVE_DESKTOP;
+      }
+
+      function normalizeHexColor(color) {
+        if (typeof color !== 'string') return null;
+        const trimmed = color.trim().toLowerCase();
+        const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(trimmed);
+        if (!match) return null;
+        const body = match[1].toLowerCase();
+        if (body.length === 3) {
+          return `#${body[0]}${body[0]}${body[1]}${body[1]}${body[2]}${body[2]}`;
+        }
+        return `#${body}`;
+      }
+
+      function parseHexColor(color) {
+        const key = normalizeHexColor(color);
+        if (!key) return null;
+        return {
+          key,
+          r: Number.parseInt(key.slice(1, 3), 16),
+          g: Number.parseInt(key.slice(3, 5), 16),
+          b: Number.parseInt(key.slice(5, 7), 16)
+        };
+      }
+
+      function getFruitPopTintColor(fruitKind) {
+        return fruitKind === 'watermelon' ? '#ff1a1a' : getFruitStyle(fruitKind).base;
+      }
+
+      function getFruitPopTintSource(baseImg, tintColor) {
+        if (!baseImg || !tintColor) return null;
+        const tint = parseHexColor(tintColor);
+        if (!tint) return null;
+        const cached = fruitPopTintSourceCache.get(tint.key);
+        if (cached) return cached;
+
+        const srcW = Math.max(1, baseImg.naturalWidth || baseImg.width || 0);
+        const srcH = Math.max(1, baseImg.naturalHeight || baseImg.height || 0);
+        const offscreen = document.createElement('canvas');
+        offscreen.width = srcW;
+        offscreen.height = srcH;
+        const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
+        if (!offCtx) return null;
+        offCtx.imageSmoothingEnabled = true;
+        offCtx.drawImage(baseImg, 0, 0, srcW, srcH);
+
+        try {
+          const imageData = offCtx.getImageData(0, 0, srcW, srcH);
+          const pixels = imageData.data;
+          for (let i = 0; i < pixels.length; i += 4) {
+            const alpha = pixels[i + 3];
+            if (alpha <= FX_FRUIT_POP_TINT_ALPHA_CUTOFF) {
+              pixels[i] = 0;
+              pixels[i + 1] = 0;
+              pixels[i + 2] = 0;
+              pixels[i + 3] = 0;
+              continue;
+            }
+            const luminance = (pixels[i] * 77 + pixels[i + 1] * 150 + pixels[i + 2] * 29) >> 8;
+            pixels[i] = Math.round((tint.r * luminance) / 255);
+            pixels[i + 1] = Math.round((tint.g * luminance) / 255);
+            pixels[i + 2] = Math.round((tint.b * luminance) / 255);
+          }
+          offCtx.putImageData(imageData, 0, 0);
+        } catch {
+          // Fallback when pixel readback is unavailable.
+          offCtx.globalCompositeOperation = 'source-in';
+          offCtx.fillStyle = tint.key;
+          offCtx.fillRect(0, 0, srcW, srcH);
+          offCtx.globalCompositeOperation = 'source-over';
+        }
+
+        fruitPopTintSourceCache.set(tint.key, offscreen);
+        return offscreen;
+      }
+
+      function primeFruitPopTintSources() {
+        const fruitPopImg = getImageOrNull('fx_fruit_pop');
+        if (!fruitPopImg) return;
+        for (const fruit of FRUITS) {
+          getFruitPopTintSource(fruitPopImg, getFruitPopTintColor(fruit.kind));
+        }
       }
 
       function getSpriteRaster(spriteKey, img, targetDrawW, targetDrawH) {
@@ -1495,7 +1581,7 @@
       function spawnImpactByEvent(o) {
         const fxKey = getFxKeyForObject(o);
         const tintColor = o.kind === 'fruit'
-          ? (o.fruitKind === 'watermelon' ? '#ff1a1a' : getFruitStyle(o.fruitKind).base)
+          ? getFruitPopTintColor(o.fruitKind)
           : null;
         if (spawnImpactFx(fxKey, o.x, o.y, o.r, o.rot, { tintColor })) return;
         spawnLegacyImpactPop(o);
@@ -1536,7 +1622,18 @@
           const alpha = alphaBase * (isFruitPopFx ? 0.90 : 1.0);
           if (alpha <= 0.01) continue;
 
-          const raster = getSpriteRaster(fx.fxKey, img, drawW, drawH);
+          let drawSource = img;
+          let rasterKey = fx.fxKey;
+          if (isFruitPopFx && fx.tintColor) {
+            const tintedSource = getFruitPopTintSource(img, fx.tintColor);
+            if (tintedSource) {
+              drawSource = tintedSource;
+              const tintKey = normalizeHexColor(fx.tintColor) || fx.tintColor;
+              rasterKey = `${fx.fxKey}:tint:${tintKey}`;
+            }
+          }
+
+          const raster = getSpriteRaster(rasterKey, drawSource, drawW, drawH);
           if (raster) {
             drawW = raster.drawW;
             drawH = raster.drawH;
@@ -1556,16 +1653,7 @@
           if (raster) {
             ctx.drawImage(raster.canvas, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
           } else {
-            ctx.drawImage(img, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
-          }
-          if (isFruitPopFx && fx.tintColor) {
-            const drawX = -drawW * anchorX;
-            const drawY = -drawH * anchorY;
-            ctx.filter = 'none';
-            ctx.globalCompositeOperation = 'source-atop';
-            ctx.globalAlpha = alpha * 0.42;
-            ctx.fillStyle = fx.tintColor;
-            ctx.fillRect(drawX, drawY, drawW, drawH);
+            ctx.drawImage(drawSource, -drawW * anchorX, -drawH * anchorY, drawW, drawH);
           }
           ctx.restore();
         }
