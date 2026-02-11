@@ -1555,7 +1555,7 @@
         const cap = getFxQueueLimit();
         while (impactFxQueue.length >= cap) impactFxQueue.shift();
         const baseLife = fxKey === 'fx_star_burst' ? 0.46 : fxKey === 'fx_bug_hit' ? 0.40 : 0.34;
-        const baseScale = fxKey === 'fx_star_burst' ? 4.40 : fxKey === 'fx_bug_hit' ? 1.10 : 1.50;
+        const baseScale = fxKey === 'fx_star_burst' ? 4.40 : fxKey === 'fx_bug_hit' ? 1.10 : 2.25;
         const quality = clamp(runtimeFxQuality, 0.58, 1.0);
         const lifeMul = quality < 0.72 ? 0.72 : quality < 0.86 ? 0.86 : 1.0;
         const alphaMul = quality < 0.72 ? 0.78 : quality < 0.86 ? 0.90 : 1.0;
@@ -1720,9 +1720,9 @@
       let spawnTimer = 0;
 
       function globalSpeedMultiplier() {
-        // every 30 sec +10%
-        const steps = Math.floor(totalElapsed / 30);
-        return Math.pow(1.10, steps);
+        // every 15 sec +15%
+        const steps = Math.floor(totalElapsed / 15);
+        return Math.pow(1.15, steps);
       }
 
       function spawnObject() {
@@ -3032,7 +3032,7 @@
           updateBaselineMetrics(dt);
           updateFeverEffects(dt);
 
-          // speed multiplier (every 30 sec +10%)
+          // speed multiplier (every 15 sec +15%)
           const gMul = globalSpeedMultiplier();
 
           // Basket movement
