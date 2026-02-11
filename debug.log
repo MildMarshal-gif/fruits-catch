@@ -1,0 +1,2 @@
+[0211/110033.214:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: アクセスが拒否されました。 (0x5)
+[0211/110225.812:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: アクセスが拒否されました。 (0x5)
