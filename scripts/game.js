@@ -1,4 +1,4 @@
-﻿(() => {
+(() => {
       const FC = window.FC;
       FC.initGame = () => {
       const ui = FC.ui;
@@ -80,6 +80,12 @@
           ? 'balanced'
           : 'quality';
       let currentRenderScale = 1;
+      const viewportState = {
+        logicalWidth: BASE_CANVAS_W,
+        logicalHeight: BASE_CANVAS_H,
+        renderScale: 1,
+        deviceType: 'desktop'
+      };
       let staticBackgroundLayer = null;
       let staticBackgroundLayerKey = '';
       let lastInputAt = null;
@@ -121,14 +127,12 @@
         return qualityMode === 'auto' ? qualityTier : getQualityTierFromMode(qualityMode);
       }
 
-      function computeRenderScaleForMode(mode, tier, dpr) {
-        const safeDpr = Math.max(1, dpr || 1);
-        if (mode === 'quality') return Math.min(safeDpr, 3.0);
-        if (mode === 'performance') return Math.min(safeDpr, 1.75);
-        if (mode === 'balanced') return Math.min(safeDpr, 2.5);
-        if (tier === 'performance') return Math.min(safeDpr, 1.75);
-        if (tier === 'balanced') return Math.min(safeDpr, 2.25);
-        return Math.min(safeDpr, 2.5);
+      function getGameWidth() {
+        return Math.max(1, Math.round(viewportState.logicalWidth || BASE_CANVAS_W));
+      }
+
+      function getGameHeight() {
+        return Math.max(1, Math.round(viewportState.logicalHeight || BASE_CANVAS_H));
       }
 
       function updateQualityDataAttrs() {
@@ -332,10 +336,10 @@
       window.addEventListener('keyup', (e) => keys.delete(e.key));
       inputEngine = FC.createInputEngine({
         canvas,
-        getLogicalWidth: () => canvas.width,
+        getLogicalWidth: () => getGameWidth(),
         getClampRange: () => ({
           min: basket.w / 2 + 14,
-          max: canvas.width - basket.w / 2 - 14
+          max: getGameWidth() - basket.w / 2 - 14
         }),
         onTargetX: (x, at) => {
           basket.targetX = x;
@@ -926,7 +930,7 @@
               t: -i * 0.08,
               life: feverFx.enterDuration + 0.24 + i * 0.08,
               startR: 16 + i * 10,
-              endR: Math.max(canvas.width, canvas.height) * (0.50 + i * 0.12),
+              endR: Math.max(getGameWidth(), getGameHeight()) * (0.50 + i * 0.12),
               width: 18 - i * 5,
               color: i === 0 ? '255,255,255' : '255,211,106',
               mode: 'expand'
@@ -938,7 +942,7 @@
           x, y,
           t: 0,
           life: feverFx.exitDuration + 0.18,
-          startR: Math.max(canvas.width, canvas.height) * 0.46,
+          startR: Math.max(getGameWidth(), getGameHeight()) * 0.46,
           endR: 24,
           width: 12,
           color: '255,255,255',
@@ -966,18 +970,18 @@
       }
 
       function spawnFeverExitConverge() {
-        const cx = canvas.width * 0.5;
-        const cy = canvas.height * 0.32;
+        const cx = getGameWidth() * 0.5;
+        const cy = getGameHeight() * 0.32;
         const density = getRuntimeFxDensity();
         const count = Math.max(8, Math.round((reducedMotionQuery.matches ? 12 : 22) * density));
         for (let i=0; i<count; i++) {
           const edge = i % 4;
           let x = 0;
           let y = 0;
-          if (edge === 0) { x = rand(0, canvas.width); y = -8; }
-          if (edge === 1) { x = canvas.width + 8; y = rand(0, canvas.height); }
-          if (edge === 2) { x = rand(0, canvas.width); y = canvas.height + 8; }
-          if (edge === 3) { x = -8; y = rand(0, canvas.height); }
+          if (edge === 0) { x = rand(0, getGameWidth()); y = -8; }
+          if (edge === 1) { x = getGameWidth() + 8; y = rand(0, getGameHeight()); }
+          if (edge === 2) { x = rand(0, getGameWidth()); y = getGameHeight() + 8; }
+          if (edge === 3) { x = -8; y = rand(0, getGameHeight()); }
           const dx = cx - x;
           const dy = cy - y;
           const dist = Math.hypot(dx, dy) || 1;
@@ -1000,8 +1004,8 @@
         const speed = rand(620, 1060) * (reducedMotionQuery.matches ? 0.64 : 1) * (0.82 + intensity * 0.25);
         const len = rand(76, 168);
         shootingStars.push({
-          x: rand(canvas.width * 0.08, canvas.width * 0.92),
-          y: rand(-canvas.height * 0.2, canvas.height * 0.36),
+          x: rand(getGameWidth() * 0.08, getGameWidth() * 0.92),
+          y: rand(-getGameHeight() * 0.2, getGameHeight() * 0.36),
           vx: Math.cos(heading) * speed,
           vy: Math.sin(heading) * speed,
           life: rand(0.42, 0.72),
@@ -1043,7 +1047,7 @@
         }
       }
 
-      function setFeverPhase(nextPhase, nowSec, originX = canvas.width * 0.5, originY = canvas.height * 0.35) {
+      function setFeverPhase(nextPhase, nowSec, originX = getGameWidth() * 0.5, originY = getGameHeight() * 0.35) {
         if (nextPhase === 'enter') {
           feverFx.phase = 'enter';
           feverFx.phaseStart = nowSec;
@@ -1075,7 +1079,7 @@
           feverFx.hitPulse = Math.max(feverFx.hitPulse, reducedMotionQuery.matches ? 0.2 : 0.32);
           feverBadge.classList.add('show', 'fever-neon');
           feverBadge.dataset.phase = 'exit';
-          spawnFeverShockwave(canvas.width * 0.5, canvas.height * 0.32, 'exit');
+          spawnFeverShockwave(getGameWidth() * 0.5, getGameHeight() * 0.32, 'exit');
           spawnFeverExitConverge();
           updateScoreCardState();
           return;
@@ -1170,7 +1174,7 @@
           s.t += dt;
           s.x += s.vx * dt;
           s.y += s.vy * dt;
-          if (s.t > s.life || s.x + s.len < -40 || s.y - s.len > canvas.height + 40) {
+          if (s.t > s.life || s.x + s.len < -40 || s.y - s.len > getGameHeight() + 40) {
             shootingStars.splice(i, 1);
           }
         }
@@ -1194,30 +1198,49 @@
         const dpr = window.devicePixelRatio || 1;
         const coarsePointer = coarsePointerQuery.matches;
         const reducedMotion = reducedMotionQuery.matches;
-        const prevCanvasW = canvas.width;
-        const prevCanvasH = canvas.height;
+        const prevLogicalW = getGameWidth();
+        const prevLogicalH = getGameHeight();
+        const prevRenderScale = currentRenderScale;
         const canvasRect = canvas.getBoundingClientRect();
-        const nextCanvasW = Math.max(320, Math.round(canvasRect.width || canvas.clientWidth || prevCanvasW));
-        const nextCanvasH = Math.max(180, Math.round(canvasRect.height || canvas.clientHeight || prevCanvasH));
+        const nextCssW = Math.max(320, Math.round(canvasRect.width || canvas.clientWidth || prevLogicalW));
+        const nextCssH = Math.max(180, Math.round(canvasRect.height || canvas.clientHeight || prevLogicalH));
         const deviceType = detectDeviceType();
         const preset = DEVICE_PRESETS[deviceType];
         const activeTier = getActiveQualityTier();
-        const baseCanvasW = deviceType === 'desktop' ? BASE_CANVAS_W : nextCanvasW;
-        const baseCanvasH = deviceType === 'desktop' ? BASE_CANVAS_H : nextCanvasH;
-        const renderScale = computeRenderScaleForMode(qualityMode, activeTier, dpr);
-        const targetCanvasW = Math.max(320, Math.round(baseCanvasW * renderScale));
-        const targetCanvasH = Math.max(180, Math.round(baseCanvasH * renderScale));
+        const nextLogicalW = deviceType === 'desktop' ? BASE_CANVAS_W : nextCssW;
+        const nextLogicalH = deviceType === 'desktop' ? BASE_CANVAS_H : nextCssH;
 
-        currentRenderScale = renderScale;
-        if (perfEngine) perfEngine.setDprScale(renderScale);
-        root.style.setProperty('--render-scale', renderScale.toFixed(3));
+        let renderSnapshot = null;
+        if (rendererEngine?.configure) {
+          renderSnapshot = rendererEngine.configure({
+            logicalWidth: nextLogicalW,
+            logicalHeight: nextLogicalH,
+            mode: qualityMode,
+            tier: activeTier
+          });
+        } else {
+          canvas.width = nextLogicalW;
+          canvas.height = nextLogicalH;
+        }
+
+        const resolvedLogicalW = Math.max(1, Math.round(renderSnapshot?.logicalWidth || nextLogicalW));
+        const resolvedLogicalH = Math.max(1, Math.round(renderSnapshot?.logicalHeight || nextLogicalH));
+        const resolvedRenderScale = Math.max(1, renderSnapshot?.renderScale || 1);
+        const logicalChanged = resolvedLogicalW !== prevLogicalW || resolvedLogicalH !== prevLogicalH;
+        const renderScaleChanged = Math.abs(resolvedRenderScale - prevRenderScale) > 0.0001;
+
+        viewportState.logicalWidth = resolvedLogicalW;
+        viewportState.logicalHeight = resolvedLogicalH;
+        viewportState.renderScale = resolvedRenderScale;
+        viewportState.deviceType = deviceType;
+        currentRenderScale = resolvedRenderScale;
+        if (perfEngine) perfEngine.setDprScale(currentRenderScale);
+        root.style.setProperty('--render-scale', currentRenderScale.toFixed(3));
         updateQualityDataAttrs();
 
-        if (targetCanvasW !== prevCanvasW || targetCanvasH !== prevCanvasH) {
-          const scaleX = targetCanvasW / prevCanvasW;
-          const scaleY = targetCanvasH / prevCanvasH;
-          canvas.width = targetCanvasW;
-          canvas.height = targetCanvasH;
+        if (logicalChanged) {
+          const scaleX = resolvedLogicalW / Math.max(1, prevLogicalW);
+          const scaleY = resolvedLogicalH / Math.max(1, prevLogicalH);
           staticBackgroundLayer = null;
           staticBackgroundLayerKey = '';
           if (assetsEngine?.clearSpriteRasterCache) assetsEngine.clearSpriteRasterCache();
@@ -1263,13 +1286,13 @@
             feverFx.originX *= scaleX;
             feverFx.originY *= scaleY;
           }
+        } else if (renderScaleChanged && assetsEngine?.clearSpriteRasterCache) {
+          assetsEngine.clearSpriteRasterCache();
         }
 
-        const sx = nextCanvasW / Math.max(1, canvas.width);
-        const sy = nextCanvasH / Math.max(1, canvas.height);
-        drawFixScaleY = clamp((sx && sy) ? (sx / sy) : 1, 0.55, 1.65);
-        inputEngine?.refreshRect?.();
         rendererEngine?.refreshRectCache?.();
+        inputEngine?.refreshRect?.();
+        drawFixScaleY = clamp(rendererEngine?.drawFixScaleY || drawFixScaleY || 1, 0.55, 1.65);
 
         const dprFxPenalty = dpr >= 3 ? 0.90 : dpr >= 2 ? 0.95 : 1.0;
         const reducedFxMul = reducedMotion
@@ -1311,16 +1334,16 @@
         rebuildFeverStreams();
 
         const prevMinX = basket.w / 2 + 14;
-        const prevMaxX = canvas.width - basket.w / 2 - 14;
+        const prevMaxX = getGameWidth() - basket.w / 2 - 14;
         const prevSpan = Math.max(1, prevMaxX - prevMinX);
         const normalizedX = clamp((basket.x - prevMinX) / prevSpan, 0, 1);
 
         basket.w = BASE_BASKET_W * preset.basketScale;
         basket.h = BASE_BASKET_H * preset.basketScale;
-        basket.y = canvas.height - Math.max(76, canvas.height * 0.125);
+        basket.y = getGameHeight() - Math.max(76, getGameHeight() * 0.125);
 
         const minX = basket.w / 2 + 14;
-        const maxX = canvas.width - basket.w / 2 - 14;
+        const maxX = getGameWidth() - basket.w / 2 - 14;
         basket.x = minX + normalizedX * Math.max(1, maxX - minX);
         basket.targetX = basket.targetX == null ? null : clamp(basket.targetX, minX, maxX);
 
@@ -1343,8 +1366,7 @@
       }
 
       function updateDrawFixScale() {
-        // drawFixScaleY is updated only from responsive/profile events.
-        drawFixScaleY = clamp(drawFixScaleY || 1, 0.55, 1.65);
+        drawFixScaleY = clamp(rendererEngine?.drawFixScaleY || drawFixScaleY || 1, 0.55, 1.65);
       }
 
       function updateHearts() {
@@ -1385,8 +1407,8 @@
         wrapEl.classList.remove('damage-1', 'damage-2', 'damage-3', 'life-caution', 'life-critical');
         heartsEl.classList.remove('hit', 'life-critical');
 
-        basket.x = canvas.width/2;
-        basket.y = canvas.height - Math.max(76, canvas.height * 0.125);
+        basket.x = getGameWidth() / 2;
+        basket.y = getGameHeight() - Math.max(76, getGameHeight() * 0.125);
         basket.targetX = null;
 
         scoreEl.textContent = '0';
@@ -1712,7 +1734,7 @@
 
         if (isStar) {
           const r = GRAPE_FRUIT ? getFruitRadiusForMul(GRAPE_FRUIT.mul) : clamp((fruitRadiusMin + fruitRadiusMax) * 0.44, 18, 36);
-          const x = rand(r + 18, canvas.width - r - 18);
+          const x = rand(r + 18, getGameWidth() - r - 18);
           objects.push({
             kind: 'star',
             fruitKind: STAR.kind,
@@ -1730,7 +1752,7 @@
 
         if (isHazard) {
           const r = clamp((fruitRadiusMin + fruitRadiusMax) * 0.42, 18, 34);
-          const x = rand(r + 18, canvas.width - r - 18);
+          const x = rand(r + 18, getGameWidth() - r - 18);
           objects.push({
             kind: 'bug',
             fruitKind: HAZARD.kind,
@@ -1748,7 +1770,7 @@
 
         const t = FRUITS[Math.floor(Math.random()*FRUITS.length)];
         const r = getFruitRadiusForMul(t.mul);
-        const x = rand(r + 18, canvas.width - r - 18);
+        const x = rand(r + 18, getGameWidth() - r - 18);
         objects.push({
           kind: 'fruit',
           fruitKind: t.kind,
@@ -2228,27 +2250,27 @@
         const intensity = feverState.intensity;
         const pulseFreq = reducedMotionQuery.matches ? 0.0043 : 0.0064;
         const pulse = 0.5 + 0.5 * Math.sin(now * pulseFreq * backgroundMotionScale + feverFx.hitPulse * 2.0);
-        const centerX = feverFx.phase === 'enter' ? feverFx.originX : canvas.width * 0.5;
-        const centerY = feverFx.phase === 'enter' ? feverFx.originY : canvas.height * 0.34;
+        const centerX = feverFx.phase === 'enter' ? feverFx.originX : getGameWidth() * 0.5;
+        const centerY = feverFx.phase === 'enter' ? feverFx.originY : getGameHeight() * 0.34;
 
         ctx.save();
-        const warmWash = ctx.createLinearGradient(0, 0, canvas.width, canvas.height);
+        const warmWash = ctx.createLinearGradient(0, 0, getGameWidth(), getGameHeight());
         warmWash.addColorStop(0, 'rgba(88,136,255,.38)');
         warmWash.addColorStop(0.55, 'rgba(152,112,255,.33)');
         warmWash.addColorStop(1, 'rgba(89,232,255,.34)');
         ctx.globalAlpha = (0.10 + pulse * 0.10) * intensity;
         ctx.fillStyle = warmWash;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
         ctx.restore();
 
         ctx.save();
         const aura = ctx.createRadialGradient(
           centerX,
           centerY,
-          Math.max(24, canvas.width * 0.03),
+          Math.max(24, getGameWidth() * 0.03),
           centerX,
           centerY,
-          canvas.width * 0.52
+          getGameWidth() * 0.52
         );
         aura.addColorStop(0, 'rgba(235,246,255,0.62)');
         aura.addColorStop(0.24, 'rgba(141,213,255,0.42)');
@@ -2256,7 +2278,7 @@
         aura.addColorStop(1, 'rgba(103,184,255,0)');
         ctx.globalAlpha = (0.14 + pulse * 0.12) * intensity;
         ctx.fillStyle = aura;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
         ctx.restore();
 
         const streamAlpha = Math.min(0.34, (0.08 + intensity * 0.16) * (0.5 + dynamicFx * 0.5));
@@ -2266,9 +2288,9 @@
           ctx.globalCompositeOperation = 'lighter';
           for (let i=0; i<feverStreams.length; i++) {
             const s = feverStreams[i];
-            const travel = ((now * 0.001 * (92 + s.speed * 86) * backgroundMotionScale) + s.seed * 0.73) % (canvas.width + s.len * 2);
+            const travel = ((now * 0.001 * (92 + s.speed * 86) * backgroundMotionScale) + s.seed * 0.73) % (getGameWidth() + s.len * 2);
             const x = travel - s.len;
-            const y = canvas.height * s.lane + Math.sin(now * 0.0016 * s.speed + s.seed) * s.amp * (0.2 + intensity * 0.8);
+            const y = getGameHeight() * s.lane + Math.sin(now * 0.0016 * s.speed + s.seed) * s.amp * (0.2 + intensity * 0.8);
             ctx.globalAlpha = streamAlpha * (0.6 + (s.tone % 3) * 0.14);
             ctx.strokeStyle = tones[s.tone % tones.length];
             ctx.lineWidth = s.width * (0.68 + intensity * 0.34);
@@ -2284,7 +2306,7 @@
           ctx.save();
           ctx.globalAlpha = feverFx.flash * (reducedMotionQuery.matches ? 0.14 : 0.26);
           ctx.fillStyle = '#ddf5ff';
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
           ctx.restore();
         }
       }
@@ -2373,9 +2395,9 @@
         ctx.save();
         for (let i=0; i<cloudCount; i++) {
           const speed = 9 + i * 2.8;
-          const travel = ((now * 0.010 * speed * backgroundMotionScale) + i * 230) % (canvas.width + 300);
+          const travel = ((now * 0.010 * speed * backgroundMotionScale) + i * 230) % (getGameWidth() + 300);
           const x = travel - 150;
-          const y = canvas.height * (0.09 + (i % 4) * 0.065) + Math.sin(now * 0.00045 + i) * 10;
+          const y = getGameHeight() * (0.09 + (i % 4) * 0.065) + Math.sin(now * 0.00045 + i) * 10;
           const w = 90 + (i % 3) * 28;
           const h = 30 + (i % 2) * 10;
 
@@ -2395,12 +2417,12 @@
         ctx.globalAlpha = alpha;
         ctx.fillStyle = color;
         ctx.beginPath();
-        ctx.moveTo(0, canvas.height);
-        for (let x=0; x<=canvas.width + step; x+=step) {
+        ctx.moveTo(0, getGameHeight());
+        for (let x=0; x<=getGameWidth() + step; x+=step) {
           const y = baseY + Math.sin(x * 0.006 + phase) * amp + Math.sin(x * 0.013 + phase * 1.2) * amp * 0.42;
           ctx.lineTo(x, y);
         }
-        ctx.lineTo(canvas.width, canvas.height);
+        ctx.lineTo(getGameWidth(), getGameHeight());
         ctx.closePath();
         ctx.fill();
         ctx.restore();
@@ -2430,22 +2452,22 @@
       }
 
       function drawNightCityBackdrop(now, dynamicFx, intensity) {
-        const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        const sky = ctx.createLinearGradient(0, 0, 0, getGameHeight());
         sky.addColorStop(0, '#2e1d71');
         sky.addColorStop(0.34, '#6331ae');
         sky.addColorStop(0.68, '#a73fbe');
         sky.addColorStop(1, '#5a73cf');
         ctx.fillStyle = sky;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
 
         ctx.save();
         const aurora = ctx.createRadialGradient(
-          canvas.width * 0.52,
-          canvas.height * 0.08,
+          getGameWidth() * 0.52,
+          getGameHeight() * 0.08,
           12,
-          canvas.width * 0.52,
-          canvas.height * 0.12,
-          canvas.width * 0.62
+          getGameWidth() * 0.52,
+          getGameHeight() * 0.12,
+          getGameWidth() * 0.62
         );
         aurora.addColorStop(0, 'rgba(255,246,255,0.64)');
         aurora.addColorStop(0.36, 'rgba(255,149,238,0.38)');
@@ -2453,16 +2475,16 @@
         aurora.addColorStop(1, 'rgba(118,171,255,0)');
         ctx.globalAlpha = 0.34 + intensity * 0.26;
         ctx.fillStyle = aurora;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
         ctx.restore();
 
         const nebulaCount = Math.max(3, Math.round((4 + intensity * 4) * dynamicFx));
         ctx.save();
         for (let i=0; i<nebulaCount; i++) {
-          const x = canvas.width * (0.16 + (i / (nebulaCount + 1)) * 0.72);
-          const y = canvas.height * (0.13 + (i % 2) * 0.09);
-          const w = canvas.width * (0.22 + (i % 3) * 0.07);
-          const h = canvas.height * (0.12 + (i % 2) * 0.05);
+          const x = getGameWidth() * (0.16 + (i / (nebulaCount + 1)) * 0.72);
+          const y = getGameHeight() * (0.13 + (i % 2) * 0.09);
+          const w = getGameWidth() * (0.22 + (i % 3) * 0.07);
+          const h = getGameHeight() * (0.12 + (i % 2) * 0.05);
           const hue = i % 2 === 0 ? '255,126,233' : '132,205,255';
           const cloud = ctx.createRadialGradient(x, y, 8, x, y, w);
           cloud.addColorStop(0, `rgba(${hue},0.44)`);
@@ -2478,8 +2500,8 @@
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         for (let i=0; i<sparkleCount; i++) {
-          const x = (i * 131.71 + (i % 6) * 13.8) % canvas.width;
-          const y = 12 + ((i * 69.07) % (canvas.height * 0.62));
+          const x = (i * 131.71 + (i % 6) * 13.8) % getGameWidth();
+          const y = 12 + ((i * 69.07) % (getGameHeight() * 0.62));
           const twinkle = 0.34 + 0.66 * (0.5 + 0.5 * Math.sin(now * 0.0023 + i * 1.1));
           const r = (i % 3 ? 1.0 : 1.8) * (0.82 + intensity * 0.36);
           ctx.globalAlpha = twinkle * (0.36 + intensity * 0.38);
@@ -2500,59 +2522,59 @@
         const feverIntensity = feverState.intensity;
         const nightBlend = clamp((feverIntensity - 0.08) / 0.38, 0, 1);
         const activeTier = getActiveQualityTier();
-        const staticKey = `${canvas.width}x${canvas.height}:${root.dataset.device || 'desktop'}:${Math.round(currentRenderScale * 100)}:${activeTier}`;
+        const staticKey = `${getGameWidth()}x${getGameHeight()}:${root.dataset.device || 'desktop'}:${activeTier}`;
 
         if (!staticBackgroundLayer || staticBackgroundLayerKey !== staticKey) {
           staticBackgroundLayer = document.createElement('canvas');
-          staticBackgroundLayer.width = canvas.width;
-          staticBackgroundLayer.height = canvas.height;
+          staticBackgroundLayer.width = getGameWidth();
+          staticBackgroundLayer.height = getGameHeight();
           staticBackgroundLayerKey = staticKey;
           const bgCtx = staticBackgroundLayer.getContext('2d');
           if (bgCtx) {
             bgCtx.imageSmoothingEnabled = true;
             if ('imageSmoothingQuality' in bgCtx) bgCtx.imageSmoothingQuality = 'high';
 
-            const sky = bgCtx.createLinearGradient(0, 0, 0, canvas.height);
+            const sky = bgCtx.createLinearGradient(0, 0, 0, getGameHeight());
             sky.addColorStop(0, '#65c0ff');
             sky.addColorStop(0.5, '#a9ecff');
             sky.addColorStop(1, '#dbffc9');
             bgCtx.fillStyle = sky;
-            bgCtx.fillRect(0, 0, canvas.width, canvas.height);
+            bgCtx.fillRect(0, 0, getGameWidth(), getGameHeight());
 
             const sun = bgCtx.createRadialGradient(
-              canvas.width * 0.82,
-              canvas.height * 0.12,
+              getGameWidth() * 0.82,
+              getGameHeight() * 0.12,
               10,
-              canvas.width * 0.82,
-              canvas.height * 0.12,
-              canvas.width * 0.16
+              getGameWidth() * 0.82,
+              getGameHeight() * 0.12,
+              getGameWidth() * 0.16
             );
             sun.addColorStop(0, 'rgba(255,255,245,0.95)');
             sun.addColorStop(0.45, 'rgba(255,240,174,0.55)');
             sun.addColorStop(1, 'rgba(255,220,131,0)');
             bgCtx.globalAlpha = 0.55;
             bgCtx.fillStyle = sun;
-            bgCtx.fillRect(0, 0, canvas.width, canvas.height);
+            bgCtx.fillRect(0, 0, getGameWidth(), getGameHeight());
             bgCtx.globalAlpha = 1;
 
             const terrainLayers = [
-              { y: canvas.height * 0.72, amp: 24, step: 72, color: '#9fdfa3', alpha: 0.62, phase: 0 },
-              { y: canvas.height * 0.82, amp: 18, step: 64, color: '#7fce7e', alpha: 0.74, phase: 1.2 },
-              { y: canvas.height * 0.90, amp: 14, step: 56, color: '#63b95b', alpha: 0.92, phase: 2.2 }
+              { y: getGameHeight() * 0.72, amp: 24, step: 72, color: '#9fdfa3', alpha: 0.62, phase: 0 },
+              { y: getGameHeight() * 0.82, amp: 18, step: 64, color: '#7fce7e', alpha: 0.74, phase: 1.2 },
+              { y: getGameHeight() * 0.90, amp: 14, step: 56, color: '#63b95b', alpha: 0.92, phase: 2.2 }
             ];
             for (const layer of terrainLayers) {
               bgCtx.save();
               bgCtx.globalAlpha = layer.alpha;
               bgCtx.fillStyle = layer.color;
               bgCtx.beginPath();
-              bgCtx.moveTo(0, canvas.height);
-              for (let x = 0; x <= canvas.width + layer.step; x += layer.step) {
+              bgCtx.moveTo(0, getGameHeight());
+              for (let x = 0; x <= getGameWidth() + layer.step; x += layer.step) {
                 const y = layer.y
                   + Math.sin(x * 0.006 + layer.phase) * layer.amp
                   + Math.sin(x * 0.013 + layer.phase * 1.2) * layer.amp * 0.42;
                 bgCtx.lineTo(x, y);
               }
-              bgCtx.lineTo(canvas.width, canvas.height);
+              bgCtx.lineTo(getGameWidth(), getGameHeight());
               bgCtx.closePath();
               bgCtx.fill();
               bgCtx.restore();
@@ -2561,7 +2583,7 @@
         }
 
         if (staticBackgroundLayer) {
-          ctx.drawImage(staticBackgroundLayer, 0, 0, canvas.width, canvas.height);
+          ctx.drawImage(staticBackgroundLayer, 0, 0, getGameWidth(), getGameHeight());
         }
 
         if (nightBlend > 0.001) {
@@ -2580,7 +2602,7 @@
         ctx.globalAlpha = (0.18 + feverIntensity * 0.12) * (0.46 + dynamicFx * 0.54);
         for (let i=0; i<moteCount; i++) {
           const speed = (0.04 + feverIntensity * 0.04) * backgroundMotionScale;
-          const x = (i * 137 + (now * speed)) % canvas.width;
+          const x = (i * 137 + (now * speed)) % getGameWidth();
           const y = 84 + (i * 49) % Math.max(180, Math.round(330 * (0.62 + dynamicFx * 0.38)));
           ctx.beginPath();
           ctx.arc(x, y, (2 + (i % 3)) * (0.75 + dynamicFx * 0.25), 0, Math.PI*2);
@@ -2952,18 +2974,18 @@
         const alpha = (reducedMotionQuery.matches ? 0.05 : 0.08) + pulse * (reducedMotionQuery.matches ? 0.025 : 0.055);
         ctx.save();
         const vignette = ctx.createRadialGradient(
-          canvas.width * 0.5,
-          canvas.height * 0.5,
-          canvas.width * 0.24,
-          canvas.width * 0.5,
-          canvas.height * 0.5,
-          canvas.width * 0.82
+          getGameWidth() * 0.5,
+          getGameHeight() * 0.5,
+          getGameWidth() * 0.24,
+          getGameWidth() * 0.5,
+          getGameHeight() * 0.5,
+          getGameWidth() * 0.82
         );
         vignette.addColorStop(0, 'rgba(255,96,160,0)');
         vignette.addColorStop(0.72, `rgba(255,88,150,${(alpha * 0.45).toFixed(3)})`);
         vignette.addColorStop(1, `rgba(214,26,90,${alpha.toFixed(3)})`);
         ctx.fillStyle = vignette;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
         ctx.restore();
       }
 
@@ -2975,7 +2997,7 @@
 
         // Clear
         if (rendererEngine?.preFrame) rendererEngine.preFrame();
-        else ctx.clearRect(0,0,canvas.width,canvas.height);
+        else ctx.clearRect(0,0,getGameWidth(),getGameHeight());
         updateDrawFixScale();
 
         if (perfEngine) {
@@ -3027,7 +3049,7 @@
             basket.x += basket.vx * dt;
           }
 
-          basket.x = clamp(basket.x, basket.w/2 + 14, canvas.width - basket.w/2 - 14);
+          basket.x = clamp(basket.x, basket.w/2 + 14, getGameWidth() - basket.w/2 - 14);
 
           // Spawn
           spawnTimer += dt;
@@ -3044,7 +3066,7 @@
               fever = false;
               if (music && soundOn) music.setMode('normal');
               setFeverPhase('exit', totalElapsed);
-              pop(canvas.width*0.5, canvas.height*0.22, '#ffffff', 24);
+              pop(getGameWidth()*0.5, getGameHeight()*0.22, '#ffffff', 24);
             }
           }
 
@@ -3106,14 +3128,14 @@
             }
 
             // Missed?
-            if (o.y - o.r > canvas.height + 10) {
+            if (o.y - o.r > getGameHeight() + 10) {
               objects.splice(i,1);
 
               if (o.kind === 'star' || o.kind === 'bug') continue;
 
               misses++;
               updateHearts();
-              pop(clamp(o.x, 40, canvas.width-40), canvas.height-55, '#ff4d6d', 14);
+              pop(clamp(o.x, 40, getGameWidth()-40), getGameHeight()-55, '#ff4d6d', 14);
               sfx('miss');
               triggerLifeDamageEffect();
 
@@ -3149,7 +3171,7 @@
           const alpha = clamp(damageFlash, 0, 1) * (reducedMotionQuery.matches ? 0.14 : 0.2);
           ctx.save();
           ctx.fillStyle = `rgba(255,66,112,${alpha.toFixed(3)})`;
-          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
           ctx.restore();
         }
         damageFlash = Math.max(0, damageFlash - dt * (reducedMotionQuery.matches ? 1.9 : 2.7));
@@ -3193,3 +3215,4 @@
 
       FC.bootstrap();
 })();
+

@@ -44,6 +44,7 @@
     }
 
     function emitTarget(clientX) {
+      if (!rectCache.width || rectCache.width <= 1) refreshRect();
       const mapped = mapClientXToLogical(clientX);
       const range = getClampRange?.() || { min: 0, max: Number(getLogicalWidth?.()) || mapped };
       const clamped = clamp(mapped, range.min, range.max);
@@ -53,6 +54,7 @@
 
     function onPointerDown(e) {
       if (!e.isPrimary && e.pointerType !== 'mouse') return;
+      refreshRect();
       if (canvas.setPointerCapture) {
         try { canvas.setPointerCapture(e.pointerId); } catch {}
       }

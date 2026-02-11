@@ -77,6 +77,8 @@
       refreshRectCache();
       state.renderScale = computeRenderScale();
 
+      // logicalWidth/logicalHeight define game world units.
+      // physicalW/physicalH define backing-store pixels for high-DPI rendering.
       const physicalW = Math.max(1, Math.round(state.logicalWidth * state.renderScale));
       const physicalH = Math.max(1, Math.round(state.logicalHeight * state.renderScale));
       if (canvas.width !== physicalW) canvas.width = physicalW;
