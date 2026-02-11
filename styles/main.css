@@ -569,6 +569,25 @@
       font-size:calc(42px * var(--title-scale));
     }
 
+    .title[data-title-role="brand"]{
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+
+    .start-logo{
+      display:block;
+      width:calc(360px * var(--title-scale));
+      max-width:min(82%, 520px);
+      height:auto;
+      margin-inline:auto;
+      filter:drop-shadow(0 3px 0 #ffffffd2);
+    }
+
+    .start-logo-fallback{
+      display:inline-block;
+    }
+
     .title[data-title-role="sub"],
     .pause-title{
       font-family:var(--font-family-heading-sub);
@@ -723,6 +742,10 @@
 
       .card{
         width:min(640px, 95vw);
+      }
+
+      .start-logo{
+        max-width:min(88%, 460px);
       }
     }
 
