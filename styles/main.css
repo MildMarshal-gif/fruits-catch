@@ -584,10 +584,6 @@
       filter:drop-shadow(0 3px 0 #ffffffd2);
     }
 
-    .start-logo-fallback{
-      display:inline-block;
-    }
-
     .title[data-title-role="sub"],
     .pause-title{
       font-family:var(--font-family-heading-sub);

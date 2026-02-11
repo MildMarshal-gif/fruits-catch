@@ -1,7 +1,6 @@
 ﻿(() => {
   const FC = (window.FC = window.FC || {});
   const START_LOGO_SRC = './assets/images/ui/logo/fruit-catch-start-logo_v1.png';
-  const START_LOGO_ALT = 'FRUIT CATCH';
 
   function getLivesLeft(maxMisses, misses) {
     return Math.max(0, maxMisses - misses);
@@ -122,26 +121,13 @@
 
     const logoImg = document.createElement('img');
     logoImg.className = 'start-logo';
-    logoImg.alt = START_LOGO_ALT;
+    logoImg.alt = 'ゲームロゴ';
     logoImg.decoding = 'async';
     logoImg.loading = 'eager';
 
-    const fallback = document.createElement('span');
-    fallback.className = 'start-logo-fallback';
-    fallback.textContent = START_LOGO_ALT;
-    fallback.hidden = true;
-
-    logoImg.addEventListener('error', () => {
-      logoImg.hidden = true;
-      fallback.hidden = false;
-    });
-    logoImg.addEventListener('load', () => {
-      logoImg.hidden = false;
-      fallback.hidden = true;
-    });
     logoImg.src = START_LOGO_SRC;
 
-    titleEl.append(logoImg, fallback);
+    titleEl.append(logoImg);
   }
 
   function resetOverlayTextToStart({ overlay, startBtn }) {
