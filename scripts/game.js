@@ -1555,7 +1555,7 @@
         const cap = getFxQueueLimit();
         while (impactFxQueue.length >= cap) impactFxQueue.shift();
         const baseLife = fxKey === 'fx_star_burst' ? 0.46 : fxKey === 'fx_bug_hit' ? 0.40 : 0.34;
-        const baseScale = fxKey === 'fx_star_burst' ? 1.50 : fxKey === 'fx_bug_hit' ? 2.20 : 1.00;
+        const baseScale = fxKey === 'fx_star_burst' ? 4.40 : fxKey === 'fx_bug_hit' ? 1.10 : 1.50;
         const quality = clamp(runtimeFxQuality, 0.58, 1.0);
         const lifeMul = quality < 0.72 ? 0.72 : quality < 0.86 ? 0.86 : 1.0;
         const alphaMul = quality < 0.72 ? 0.78 : quality < 0.86 ? 0.90 : 1.0;
