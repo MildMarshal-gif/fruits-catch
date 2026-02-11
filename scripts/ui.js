@@ -133,7 +133,7 @@
   function resetOverlayTextToStart({ overlay, startBtn }) {
     const titleEl = overlay.querySelector('.title');
     showStartLogoTitle(titleEl);
-    overlay.querySelector('.subtitle').textContent = 'スマホでサッと遊べるフルーツキャッチ！';
+    overlay.querySelector('.subtitle').textContent = 'スマホでサッと遊べるキャッチゲーム！';
     overlay.querySelector('.how').innerHTML =
       `画面を左右になぞってカゴを移動<br/>
        指1本でOK（片手プレイ向け）<br/>
