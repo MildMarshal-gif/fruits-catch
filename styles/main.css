@@ -527,6 +527,10 @@
       transition:opacity .24s ease;
     }
 
+    .overlay:not(.show){
+      backdrop-filter:none;
+    }
+
     .overlay.show{ opacity:1; pointer-events:auto; }
 
     .card{
@@ -644,6 +648,26 @@
     :root[data-device="mobile"] .badge{
       justify-self:flex-start;
       max-width:100%;
+    }
+
+    :root[data-device="mobile"] .wrap,
+    :root[data-device="mobile"] .stat-card,
+    :root[data-device="mobile"] .overlay{
+      backdrop-filter:none;
+    }
+
+    :root[data-quality-tier="balanced"] body::before,
+    :root[data-quality-tier="balanced"] body::after,
+    :root[data-quality-tier="performance"] body::before,
+    :root[data-quality-tier="performance"] body::after{
+      animation:none;
+      opacity:.26;
+      filter:none;
+    }
+
+    :root[data-quality-tier="performance"] .wrap::before{
+      mix-blend-mode:normal;
+      opacity:.35;
     }
 
     @media (max-width: 980px) {

@@ -73,6 +73,79 @@
       let drawFixScaleY = 1;
       let canvasBodyFontFamily = '"FCRoundedXMplus1p", sans-serif';
       let canvasBodyFontWeight = '500';
+      let qualityMode = FC.settings?.getQuality?.() || 'balanced';
+      let qualityTier = qualityMode === 'performance'
+        ? 'performance'
+        : qualityMode === 'balanced'
+          ? 'balanced'
+          : 'quality';
+      let currentRenderScale = 1;
+      let staticBackgroundLayer = null;
+      let staticBackgroundLayerKey = '';
+      let lastInputAt = null;
+      let pendingTierApply = false;
+      const perfEngine = typeof FC.createPerfEngine === 'function'
+        ? FC.createPerfEngine({
+            frameWindowSize: 120,
+            inputWindowSize: 120,
+            slowThresholdMs: 24,
+            fastThresholdMs: 18,
+            slowHoldMs: 3000,
+            fastHoldMs: 8000
+          })
+        : null;
+      if (perfEngine && typeof FC.attachPerfEngine === 'function') {
+        FC.attachPerfEngine(perfEngine);
+      }
+      if (perfEngine) {
+        perfEngine.setQualityTier(qualityTier);
+      }
+      const assetsEngine = typeof FC.createAssetEngine === 'function'
+        ? FC.createAssetEngine({
+            maxRasterCacheBytes: 48 * 1024 * 1024,
+            tintAlphaCutoff: 6
+          })
+        : null;
+      const rendererEngine = typeof FC.createRendererEngine === 'function'
+        ? FC.createRendererEngine({ canvas, ctx, root })
+        : null;
+      let inputEngine = null;
+
+      function getQualityTierFromMode(mode) {
+        if (mode === 'performance') return 'performance';
+        if (mode === 'balanced') return 'balanced';
+        return 'quality';
+      }
+
+      function getActiveQualityTier() {
+        return qualityMode === 'auto' ? qualityTier : getQualityTierFromMode(qualityMode);
+      }
+
+      function computeRenderScaleForMode(mode, tier, dpr) {
+        const safeDpr = Math.max(1, dpr || 1);
+        if (mode === 'quality') return Math.min(safeDpr, 3.0);
+        if (mode === 'performance') return Math.min(safeDpr, 1.75);
+        if (mode === 'balanced') return Math.min(safeDpr, 2.5);
+        if (tier === 'performance') return Math.min(safeDpr, 1.75);
+        if (tier === 'balanced') return Math.min(safeDpr, 2.25);
+        return Math.min(safeDpr, 2.5);
+      }
+
+      function updateQualityDataAttrs() {
+        root.dataset.qualityMode = qualityMode;
+        root.dataset.qualityTier = getActiveQualityTier();
+      }
+
+      const detachQualityListener = FC.settings?.subscribeQuality?.((nextMode) => {
+        qualityMode = nextMode;
+        if (nextMode !== 'auto') {
+          qualityTier = getQualityTierFromMode(nextMode);
+          if (perfEngine) perfEngine.setQualityTier(qualityTier);
+        }
+        pendingTierApply = true;
+        updateQualityDataAttrs();
+        scheduleResponsiveProfileApply();
+      }) || (() => {});
 
       function syncCanvasBodyFontTokens() {
         const targetRoot = root || document.documentElement;
@@ -213,13 +286,6 @@
         fx_fruit_pop: { collisionRadiusPx: 512, anchorX: 0.5, anchorY: 0.5, drawScale: 1.00 }
       };
 
-      const SPRITE_RASTER_CACHE_MAX = 64;
-      const FX_FRUIT_POP_TINT_ALPHA_CUTOFF = 6;
-      const spriteRasterCache = new Map();
-      // `${spriteKey}:${sizeBucket}:${dpr}` -> { canvas, drawW, drawH }
-      const fruitPopTintSourceCache = new Map();
-      // `#rrggbb` -> tinted canvas source for fx_fruit_pop
-
       const impactFxQueue = [];
       // { fxKey, x, y, r, rot, life, t, alpha, scale, tintColor }
 
@@ -264,19 +330,18 @@
         if (e.key === ' ' && running && !gameOver) togglePause();
       });
       window.addEventListener('keyup', (e) => keys.delete(e.key));
-
-      function setBasketByClientX(clientX) {
-        const rect = canvas.getBoundingClientRect();
-        const x = (clientX - rect.left) / rect.width * canvas.width;
-        basket.targetX = clamp(x, basket.w/2 + 14, canvas.width - basket.w/2 - 14);
-      }
-      canvas.addEventListener('mousemove', (e) => setBasketByClientX(e.clientX));
-      canvas.addEventListener('touchstart', (e) => {
-        if (e.touches?.[0]) setBasketByClientX(e.touches[0].clientX);
-      }, {passive:true});
-      canvas.addEventListener('touchmove', (e) => {
-        if (e.touches?.[0]) setBasketByClientX(e.touches[0].clientX);
-      }, {passive:true});
+      inputEngine = FC.createInputEngine({
+        canvas,
+        getLogicalWidth: () => canvas.width,
+        getClampRange: () => ({
+          min: basket.w / 2 + 14,
+          max: canvas.width - basket.w / 2 - 14
+        }),
+        onTargetX: (x, at) => {
+          basket.targetX = x;
+          lastInputAt = at;
+        }
+      });
 
       // Audio (WebAudio synth BGM: normal & fever)
       const audioCtx = (() => {
@@ -682,7 +747,6 @@
         assetLoadPromise = Promise.allSettled(
           Object.keys(IMAGE_MANIFEST).map((key) => loadImageAssetWithRetry(key))
         ).then((results) => {
-          primeFruitPopTintSources();
           refreshAssetLoadMetrics();
           assetLoadMetrics.preloadElapsedMs = performance.now() - startedAt;
           return results;
@@ -733,26 +797,17 @@
       }
 
       function normalizeHexColor(color) {
-        if (typeof color !== 'string') return null;
-        const trimmed = color.trim().toLowerCase();
-        const match = /^#([0-9a-f]{3}|[0-9a-f]{6})$/i.exec(trimmed);
-        if (!match) return null;
-        const body = match[1].toLowerCase();
-        if (body.length === 3) {
-          return `#${body[0]}${body[0]}${body[1]}${body[1]}${body[2]}${body[2]}`;
+        if (assetsEngine?.normalizeHexColor) {
+          return assetsEngine.normalizeHexColor(color);
         }
-        return `#${body}`;
+        return null;
       }
 
       function parseHexColor(color) {
-        const key = normalizeHexColor(color);
-        if (!key) return null;
-        return {
-          key,
-          r: Number.parseInt(key.slice(1, 3), 16),
-          g: Number.parseInt(key.slice(3, 5), 16),
-          b: Number.parseInt(key.slice(5, 7), 16)
-        };
+        if (assetsEngine?.parseHexColor) {
+          return assetsEngine.parseHexColor(color);
+        }
+        return null;
       }
 
       function getFruitPopTintColor(fruitKind) {
@@ -760,99 +815,13 @@
       }
 
       function getFruitPopTintSource(baseImg, tintColor) {
-        if (!baseImg || !tintColor) return null;
-        const tint = parseHexColor(tintColor);
-        if (!tint) return null;
-        const cached = fruitPopTintSourceCache.get(tint.key);
-        if (cached) return cached;
-
-        const srcW = Math.max(1, baseImg.naturalWidth || baseImg.width || 0);
-        const srcH = Math.max(1, baseImg.naturalHeight || baseImg.height || 0);
-        const offscreen = document.createElement('canvas');
-        offscreen.width = srcW;
-        offscreen.height = srcH;
-        const offCtx = offscreen.getContext('2d', { willReadFrequently: true });
-        if (!offCtx) return null;
-        offCtx.imageSmoothingEnabled = true;
-        offCtx.drawImage(baseImg, 0, 0, srcW, srcH);
-
-        try {
-          const imageData = offCtx.getImageData(0, 0, srcW, srcH);
-          const pixels = imageData.data;
-          for (let i = 0; i < pixels.length; i += 4) {
-            const alpha = pixels[i + 3];
-            if (alpha <= FX_FRUIT_POP_TINT_ALPHA_CUTOFF) {
-              pixels[i] = 0;
-              pixels[i + 1] = 0;
-              pixels[i + 2] = 0;
-              pixels[i + 3] = 0;
-              continue;
-            }
-            const luminance = (pixels[i] * 77 + pixels[i + 1] * 150 + pixels[i + 2] * 29) >> 8;
-            pixels[i] = Math.round((tint.r * luminance) / 255);
-            pixels[i + 1] = Math.round((tint.g * luminance) / 255);
-            pixels[i + 2] = Math.round((tint.b * luminance) / 255);
-          }
-          offCtx.putImageData(imageData, 0, 0);
-        } catch {
-          // Fallback when pixel readback is unavailable.
-          offCtx.globalCompositeOperation = 'source-in';
-          offCtx.fillStyle = tint.key;
-          offCtx.fillRect(0, 0, srcW, srcH);
-          offCtx.globalCompositeOperation = 'source-over';
-        }
-
-        fruitPopTintSourceCache.set(tint.key, offscreen);
-        return offscreen;
-      }
-
-      function primeFruitPopTintSources() {
-        const fruitPopImg = getImageOrNull('fx_fruit_pop');
-        if (!fruitPopImg) return;
-        for (const fruit of FRUITS) {
-          getFruitPopTintSource(fruitPopImg, getFruitPopTintColor(fruit.kind));
-        }
+        if (!assetsEngine?.getFruitPopTintSource) return null;
+        return assetsEngine.getFruitPopTintSource(baseImg, tintColor);
       }
 
       function getSpriteRaster(spriteKey, img, targetDrawW, targetDrawH) {
-        if (!img || !targetDrawW || !targetDrawH) return null;
-        const dpr = Math.max(1, Math.round((window.devicePixelRatio || 1) * 100) / 100);
-        const sizeBucket = Math.max(8, Math.round(Math.max(targetDrawW, targetDrawH) / 8) * 8);
-        const cacheKey = `${spriteKey}:${sizeBucket}:${dpr}`;
-        const cached = spriteRasterCache.get(cacheKey);
-        if (cached) {
-          spriteRasterCache.delete(cacheKey);
-          spriteRasterCache.set(cacheKey, cached);
-          return cached;
-        }
-
-        const maxNatural = Math.max(1, img.naturalWidth || img.width, img.naturalHeight || img.height);
-        const scale = sizeBucket / maxNatural;
-        const drawW = Math.max(1, Math.round((img.naturalWidth || img.width) * scale));
-        const drawH = Math.max(1, Math.round((img.naturalHeight || img.height) * scale));
-        const rasterW = Math.max(1, Math.round(drawW * dpr));
-        const rasterH = Math.max(1, Math.round(drawH * dpr));
-
-        const offscreen = document.createElement('canvas');
-        offscreen.width = rasterW;
-        offscreen.height = rasterH;
-        const offCtx = offscreen.getContext('2d');
-        if (!offCtx) return null;
-        offCtx.imageSmoothingEnabled = true;
-        offCtx.drawImage(img, 0, 0, rasterW, rasterH);
-
-        const entry = {
-          canvas: offscreen,
-          drawW: rasterW / dpr,
-          drawH: rasterH / dpr
-        };
-        spriteRasterCache.set(cacheKey, entry);
-        while (spriteRasterCache.size > SPRITE_RASTER_CACHE_MAX) {
-          const oldestKey = spriteRasterCache.keys().next().value;
-          if (oldestKey == null) break;
-          spriteRasterCache.delete(oldestKey);
-        }
-        return entry;
+        if (!assetsEngine?.getSpriteRaster) return null;
+        return assetsEngine.getSpriteRaster(spriteKey, img, targetDrawW, targetDrawH, currentRenderScale || window.devicePixelRatio || 1);
       }
 
       function updateScoreCardState() {
@@ -1140,7 +1109,16 @@
       }
 
       function updateFeverEffects(dt) {
-        const targetQuality = dt > 0.029 ? 0.68 : dt > 0.024 ? 0.84 : 1.0;
+        const frameP95 = perfEngine ? perfEngine.getFrameP95Ms() : (dt * 1000);
+        const targetQuality = frameP95 > 34
+          ? 0.58
+          : frameP95 > 28
+            ? 0.68
+            : frameP95 > 24
+              ? 0.78
+              : frameP95 > 18
+                ? 0.90
+                : 1.0;
         runtimeFxQuality += (targetQuality - runtimeFxQuality) * Math.min(1, dt * 4.2);
         runtimeFxQuality = clamp(runtimeFxQuality, 0.58, 1.0);
 
@@ -1223,14 +1201,26 @@
         const nextCanvasH = Math.max(180, Math.round(canvasRect.height || canvas.clientHeight || prevCanvasH));
         const deviceType = detectDeviceType();
         const preset = DEVICE_PRESETS[deviceType];
-        const targetCanvasW = deviceType === 'desktop' ? BASE_CANVAS_W : nextCanvasW;
-        const targetCanvasH = deviceType === 'desktop' ? BASE_CANVAS_H : nextCanvasH;
+        const activeTier = getActiveQualityTier();
+        const baseCanvasW = deviceType === 'desktop' ? BASE_CANVAS_W : nextCanvasW;
+        const baseCanvasH = deviceType === 'desktop' ? BASE_CANVAS_H : nextCanvasH;
+        const renderScale = computeRenderScaleForMode(qualityMode, activeTier, dpr);
+        const targetCanvasW = Math.max(320, Math.round(baseCanvasW * renderScale));
+        const targetCanvasH = Math.max(180, Math.round(baseCanvasH * renderScale));
+
+        currentRenderScale = renderScale;
+        if (perfEngine) perfEngine.setDprScale(renderScale);
+        root.style.setProperty('--render-scale', renderScale.toFixed(3));
+        updateQualityDataAttrs();
 
         if (targetCanvasW !== prevCanvasW || targetCanvasH !== prevCanvasH) {
           const scaleX = targetCanvasW / prevCanvasW;
           const scaleY = targetCanvasH / prevCanvasH;
           canvas.width = targetCanvasW;
           canvas.height = targetCanvasH;
+          staticBackgroundLayer = null;
+          staticBackgroundLayerKey = '';
+          if (assetsEngine?.clearSpriteRasterCache) assetsEngine.clearSpriteRasterCache();
 
           if (Number.isFinite(scaleX) && Number.isFinite(scaleY) && scaleX > 0 && scaleY > 0) {
             basket.x *= scaleX;
@@ -1275,14 +1265,21 @@
           }
         }
 
+        const sx = nextCanvasW / Math.max(1, canvas.width);
+        const sy = nextCanvasH / Math.max(1, canvas.height);
+        drawFixScaleY = clamp((sx && sy) ? (sx / sy) : 1, 0.55, 1.65);
+        inputEngine?.refreshRect?.();
+        rendererEngine?.refreshRectCache?.();
+
         const dprFxPenalty = dpr >= 3 ? 0.90 : dpr >= 2 ? 0.95 : 1.0;
         const reducedFxMul = reducedMotion
           ? (deviceType === 'mobile' ? 0.50 : deviceType === 'tablet' ? 0.58 : 0.64)
           : 1.0;
+        const tierFxMul = activeTier === 'performance' ? 0.72 : activeTier === 'balanced' ? 0.88 : 1.0;
         const motionScale = reducedMotion ? (deviceType === 'mobile' ? 0.45 : 0.55) : 1.0;
         const hudScale = clamp(preset.hudScale * (coarsePointer ? 1.02 : 1.0), 0.78, 1.08);
         const uiScale = clamp(preset.uiScale * (coarsePointer ? 1.01 : 1.0), 0.80, 1.10);
-        const fx = clamp(preset.fxDensity * dprFxPenalty * reducedFxMul, 0.18, 1.00);
+        const fx = clamp(preset.fxDensity * dprFxPenalty * reducedFxMul * tierFxMul, 0.14, 1.00);
         const pauseScale = clamp(preset.pauseScale * motionScale, 0.62, 1.02);
         const tapTargetPx = Math.max(preset.tapTarget, coarsePointer ? 44 : preset.tapTarget);
         // Keep HUD anchor stable across mobile/desktop with one viewport-based rule.
@@ -1307,7 +1304,8 @@
 
         fxDensity = fx;
         particleDensity = clamp(fx * (reducedMotion ? 0.65 : 0.92), 0.14, 1.06);
-        backgroundMotionScale = clamp(motionScale * (reducedMotion ? 0.88 : 1.00), 0.32, 1.00);
+        const tierMotionMul = activeTier === 'performance' ? 0.72 : activeTier === 'balanced' ? 0.88 : 1.0;
+        backgroundMotionScale = clamp(motionScale * (reducedMotion ? 0.88 : 1.00) * tierMotionMul, 0.26, 1.00);
         rotationMotionScale = clamp(motionScale * (reducedMotion ? 0.78 : 1.00), 0.28, 1.00);
         floatTextScale = clamp(uiScale, 0.82, 1.05);
         rebuildFeverStreams();
@@ -1345,18 +1343,8 @@
       }
 
       function updateDrawFixScale() {
-        const rect = canvas.getBoundingClientRect();
-        if (!rect.width || !rect.height || !canvas.width || !canvas.height) {
-          drawFixScaleY = 1;
-          return;
-        }
-        const sx = rect.width / canvas.width;
-        const sy = rect.height / canvas.height;
-        if (!sx || !sy) {
-          drawFixScaleY = 1;
-          return;
-        }
-        drawFixScaleY = clamp(sx / sy, 0.55, 1.65);
+        // drawFixScaleY is updated only from responsive/profile events.
+        drawFixScaleY = clamp(drawFixScaleY || 1, 0.55, 1.65);
       }
 
       function updateHearts() {
@@ -1411,6 +1399,7 @@
         updateScoreCardState();
         updatePausePanel();
         resetPlayMetrics();
+        perfEngine?.reset?.();
 
         if (music && soundOn) {
           music.setEnabled(true);
@@ -2509,16 +2498,71 @@
         const dynamicFx = clamp(fxDensity * runtimeFxQuality, 0.18, 1.18);
         const feverState = getFeverVisualState(totalElapsed);
         const feverIntensity = feverState.intensity;
-        const feverBoost = 1 + feverIntensity * (reducedMotionQuery.matches ? 0.18 : 0.34);
-        const drift = now * 0.00024 * backgroundMotionScale * feverBoost;
         const nightBlend = clamp((feverIntensity - 0.08) / 0.38, 0, 1);
+        const activeTier = getActiveQualityTier();
+        const staticKey = `${canvas.width}x${canvas.height}:${root.dataset.device || 'desktop'}:${Math.round(currentRenderScale * 100)}:${activeTier}`;
 
-        const sky = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        sky.addColorStop(0, '#65c0ff');
-        sky.addColorStop(0.5, '#a9ecff');
-        sky.addColorStop(1, '#dbffc9');
-        ctx.fillStyle = sky;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        if (!staticBackgroundLayer || staticBackgroundLayerKey !== staticKey) {
+          staticBackgroundLayer = document.createElement('canvas');
+          staticBackgroundLayer.width = canvas.width;
+          staticBackgroundLayer.height = canvas.height;
+          staticBackgroundLayerKey = staticKey;
+          const bgCtx = staticBackgroundLayer.getContext('2d');
+          if (bgCtx) {
+            bgCtx.imageSmoothingEnabled = true;
+            if ('imageSmoothingQuality' in bgCtx) bgCtx.imageSmoothingQuality = 'high';
+
+            const sky = bgCtx.createLinearGradient(0, 0, 0, canvas.height);
+            sky.addColorStop(0, '#65c0ff');
+            sky.addColorStop(0.5, '#a9ecff');
+            sky.addColorStop(1, '#dbffc9');
+            bgCtx.fillStyle = sky;
+            bgCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+            const sun = bgCtx.createRadialGradient(
+              canvas.width * 0.82,
+              canvas.height * 0.12,
+              10,
+              canvas.width * 0.82,
+              canvas.height * 0.12,
+              canvas.width * 0.16
+            );
+            sun.addColorStop(0, 'rgba(255,255,245,0.95)');
+            sun.addColorStop(0.45, 'rgba(255,240,174,0.55)');
+            sun.addColorStop(1, 'rgba(255,220,131,0)');
+            bgCtx.globalAlpha = 0.55;
+            bgCtx.fillStyle = sun;
+            bgCtx.fillRect(0, 0, canvas.width, canvas.height);
+            bgCtx.globalAlpha = 1;
+
+            const terrainLayers = [
+              { y: canvas.height * 0.72, amp: 24, step: 72, color: '#9fdfa3', alpha: 0.62, phase: 0 },
+              { y: canvas.height * 0.82, amp: 18, step: 64, color: '#7fce7e', alpha: 0.74, phase: 1.2 },
+              { y: canvas.height * 0.90, amp: 14, step: 56, color: '#63b95b', alpha: 0.92, phase: 2.2 }
+            ];
+            for (const layer of terrainLayers) {
+              bgCtx.save();
+              bgCtx.globalAlpha = layer.alpha;
+              bgCtx.fillStyle = layer.color;
+              bgCtx.beginPath();
+              bgCtx.moveTo(0, canvas.height);
+              for (let x = 0; x <= canvas.width + layer.step; x += layer.step) {
+                const y = layer.y
+                  + Math.sin(x * 0.006 + layer.phase) * layer.amp
+                  + Math.sin(x * 0.013 + layer.phase * 1.2) * layer.amp * 0.42;
+                bgCtx.lineTo(x, y);
+              }
+              bgCtx.lineTo(canvas.width, canvas.height);
+              bgCtx.closePath();
+              bgCtx.fill();
+              bgCtx.restore();
+            }
+          }
+        }
+
+        if (staticBackgroundLayer) {
+          ctx.drawImage(staticBackgroundLayer, 0, 0, canvas.width, canvas.height);
+        }
 
         if (nightBlend > 0.001) {
           ctx.save();
@@ -2527,54 +2571,11 @@
           ctx.restore();
         }
 
-        ctx.save();
-        const sun = ctx.createRadialGradient(
-          canvas.width * 0.82,
-          canvas.height * 0.12,
-          10,
-          canvas.width * 0.82,
-          canvas.height * 0.12,
-          canvas.width * 0.16
-        );
-        sun.addColorStop(0, 'rgba(255,255,245,0.95)');
-        sun.addColorStop(0.45, 'rgba(255,240,174,0.55)');
-        sun.addColorStop(1, 'rgba(255,220,131,0)');
-        ctx.globalAlpha = (0.55 + feverIntensity * 0.12) * (1 - nightBlend * 0.92);
-        ctx.fillStyle = sun;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.restore();
-
         drawParallaxCloudLayer(now, dynamicFx, feverIntensity * (1 - nightBlend * 0.45));
         drawFeverBackdrop(now, feverState, dynamicFx);
 
-        drawTerrainLayer(
-          canvas.height * 0.72,
-          24,
-          72,
-          '#9fdfa3',
-          0.62,
-          drift * 0.84
-        );
-
-        drawTerrainLayer(
-          canvas.height * 0.82,
-          18,
-          64,
-          '#7fce7e',
-          0.74,
-          drift * 1.06 + 1.2
-        );
-
-        drawTerrainLayer(
-          canvas.height * 0.90,
-          14,
-          56,
-          '#63b95b',
-          0.92,
-          drift * 1.3 + 2.2
-        );
-
-        const moteCount = Math.max(6, Math.round((14 + feverIntensity * 12) * dynamicFx));
+        const tierMoteMul = activeTier === 'performance' ? 0.58 : activeTier === 'balanced' ? 0.78 : 1.0;
+        const moteCount = Math.max(4, Math.round((14 + feverIntensity * 12) * dynamicFx * tierMoteMul));
         ctx.save();
         ctx.globalAlpha = (0.18 + feverIntensity * 0.12) * (0.46 + dynamicFx * 0.54);
         for (let i=0; i<moteCount; i++) {
@@ -2973,8 +2974,31 @@
         last = now;
 
         // Clear
-        ctx.clearRect(0,0,canvas.width,canvas.height);
+        if (rendererEngine?.preFrame) rendererEngine.preFrame();
+        else ctx.clearRect(0,0,canvas.width,canvas.height);
         updateDrawFixScale();
+
+        if (perfEngine) {
+          const sample = perfEngine.recordFrame(dt * 1000);
+          const inputAt = inputEngine?.consumeLatestInputAt?.() ?? lastInputAt;
+          if (Number.isFinite(inputAt)) {
+            perfEngine.recordInputLatency(inputAt, now);
+            lastInputAt = null;
+          }
+          if (qualityMode !== 'auto') {
+            const fixedTier = getQualityTierFromMode(qualityMode);
+            if (perfEngine.qualityTier !== fixedTier) perfEngine.setQualityTier(fixedTier);
+          }
+          if (qualityMode === 'auto' && sample.tierChanged) {
+            qualityTier = sample.nextTier;
+            pendingTierApply = true;
+            updateQualityDataAttrs();
+          }
+          if (pendingTierApply) {
+            pendingTierApply = false;
+            scheduleResponsiveProfileApply();
+          }
+        }
 
         // Background
         drawBackground();
@@ -3135,6 +3159,7 @@
       }
 
       // Init
+      updateQualityDataAttrs();
       applyResponsiveProfile();
       syncCanvasBodyFontTokens();
       window.addEventListener('resize', scheduleResponsiveProfileApply, {passive:true});
@@ -3154,6 +3179,12 @@
       // Preload in background; startGame/restartGame still applies timeout guard.
       void loadGameAssets();
       requestAnimationFrame(frame);
+
+      window.addEventListener('beforeunload', () => {
+        detachQualityListener();
+        inputEngine?.destroy?.();
+        rendererEngine?.destroy?.();
+      });
 
       // Start with overlay (music off until start)
       if (music) music.setEnabled(false);
