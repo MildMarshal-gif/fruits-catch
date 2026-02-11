@@ -577,8 +577,8 @@
 
     .start-logo{
       display:block;
-      width:calc(360px * var(--title-scale));
-      max-width:min(82%, 520px);
+      width:calc(540px * var(--title-scale));
+      max-width:min(82%, 780px);
       height:auto;
       margin-inline:auto;
       filter:drop-shadow(0 3px 0 #ffffffd2);
@@ -741,7 +741,7 @@
       }
 
       .start-logo{
-        max-width:min(88%, 460px);
+        max-width:min(88%, 690px);
       }
     }
 
