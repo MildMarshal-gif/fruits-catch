@@ -1555,7 +1555,7 @@
         const cap = getFxQueueLimit();
         while (impactFxQueue.length >= cap) impactFxQueue.shift();
         const baseLife = fxKey === 'fx_star_burst' ? 0.46 : fxKey === 'fx_bug_hit' ? 0.40 : 0.34;
-        const baseScale = fxKey === 'fx_star_burst' ? 1.50 : fxKey === 'fx_bug_hit' ? 1.95 : 1.00;
+        const baseScale = fxKey === 'fx_star_burst' ? 1.50 : fxKey === 'fx_bug_hit' ? 2.20 : 1.00;
         const quality = clamp(runtimeFxQuality, 0.58, 1.0);
         const lifeMul = quality < 0.72 ? 0.72 : quality < 0.86 ? 0.86 : 1.0;
         const alphaMul = quality < 0.72 ? 0.78 : quality < 0.86 ? 0.90 : 1.0;
@@ -1582,8 +1582,8 @@
           return;
         }
         if (o.kind === 'bug') {
-          pop(o.x, o.y, '#d6505d', 24);
-          pop(o.x, o.y, '#78311f', 16);
+          pop(o.x, o.y, '#d6505d', 34);
+          pop(o.x, o.y, '#78311f', 24);
           return;
         }
         pop(o.x, o.y, o.color, fever ? 30 : 14);
@@ -1751,7 +1751,9 @@
         }
 
         if (isHazard) {
-          const r = clamp((fruitRadiusMin + fruitRadiusMax) * 0.42, 18, 34);
+          const r = GRAPE_FRUIT
+            ? getFruitRadiusForMul(GRAPE_FRUIT.mul)
+            : clamp((fruitRadiusMin + fruitRadiusMax) * 0.42, 18, 34);
           const x = rand(r + 18, getGameWidth() - r - 18);
           objects.push({
             kind: 'bug',
