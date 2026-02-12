@@ -837,6 +837,24 @@
         });
       }
 
+      // Keep score number and fever decoration in one update path.
+      function syncScoreDisplay() {
+        scoreEl.textContent = String(score);
+        updateScoreCardState();
+      }
+
+      function applyScoreGain(o) {
+        const basePts = o.points;
+        const multiplier = fever ? 2 : 1;
+        const got = basePts * multiplier;
+        score += got;
+        syncScoreDisplay();
+
+        const scoreText = multiplier > 1 ? `${basePts}x${multiplier} = +${got}` : `+${got}`;
+        addFloatText(o.x, o.y - 12, scoreText, multiplier > 1 ? '#ffd670' : o.color);
+        if (multiplier > 1) triggerFeverHitFeedback(o.x, o.y, '#ffd670');
+      }
+
       function updatePausePanel() {
         ui.updatePausePanel({
           pausePanel,
@@ -1411,7 +1429,7 @@
         basket.y = getGameHeight() - Math.max(76, getGameHeight() * 0.125);
         basket.targetX = null;
 
-        scoreEl.textContent = '0';
+        syncScoreDisplay();
         feverTimeEl.textContent = `${FEVER_DURATION.toFixed(1)}s`;
         updateHearts();
 
@@ -1501,13 +1519,18 @@
       }
 
       function endGame() {
+        const endedDuringFever = fever;
         gameOver = true;
         running = false;
         paused = false;
         pauseBtn.disabled = false;
-        fever = false;
-        clearFeverVisualState();
-        feverBadge.classList.remove('show');
+        if (!endedDuringFever) {
+          clearFeverVisualState();
+          feverBadge.classList.remove('show');
+        } else {
+          setFeverPhase('active', totalElapsed);
+          feverTimeEl.textContent = `${Math.max(0, feverEnd - totalElapsed).toFixed(1)}s`;
+        }
         updatePausePanel();
 
         if (music) music.setEnabled(false);
@@ -3115,16 +3138,8 @@
                 continue;
               }
 
-              const basePts = o.points;
-              const got = fever ? basePts * 2 : basePts;
-
-              score += got;
-              scoreEl.textContent = String(score);
-
               spawnImpactByEvent(o);
-              const scoreText = fever ? `${basePts}×2 = +${got}` : `+${got}`;
-              addFloatText(o.x, o.y - 12, scoreText, fever ? '#ffd670' : o.color);
-              if (fever) triggerFeverHitFeedback(o.x, o.y, '#ffd670');
+              applyScoreGain(o);
               sfx('catch');
               continue;
             }
@@ -3217,4 +3232,3 @@
 
       FC.bootstrap();
 })();
-

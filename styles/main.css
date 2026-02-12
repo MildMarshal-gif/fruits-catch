@@ -173,6 +173,7 @@
     .stat-value{
       display:inline-flex;
       align-items:center;
+      min-height:calc(32px * var(--hud-scale));
       gap:8px;
       min-width:0;
       font-weight:var(--font-weight-body);
@@ -195,10 +196,10 @@
     .score-shell{
       position:relative;
       display:inline-flex;
-      align-items:flex-start;
+      align-items:center;
       gap:8px;
       min-width:0;
-      padding:2px 10px 4px;
+      padding:3px 10px;
       border-radius:999px;
       isolation:isolate;
     }
@@ -298,6 +299,7 @@
       flex-wrap:nowrap;
       gap:calc(6px * var(--hud-scale));
       min-width:fit-content;
+      min-height:calc(24px * var(--hud-scale));
     }
 
     .life-heart{
