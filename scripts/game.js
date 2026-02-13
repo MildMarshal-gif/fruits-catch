@@ -254,21 +254,27 @@
       const ASSET_PRELOAD_TIMEOUT_MS = 1800;
       const ASSET_RETRY_MAX = 1;
       const ASSET_START_REQUIRED_RATIO = 0.0;
+      // Bump this when image assets are replaced so browsers fetch fresh files.
+      const ASSET_VERSION = '2026-02-13-1';
+
+      function withAssetVersion(path) {
+        return `${path}?v=${encodeURIComponent(ASSET_VERSION)}`;
+      }
 
       const IMAGE_MANIFEST = {
-        fruit_apple: 'assets/images/game-objects/fruit_apple_v2.png',
-        fruit_banana: 'assets/images/game-objects/fruit_banana_v2.png',
-        fruit_orange: 'assets/images/game-objects/fruit_orange_v2.png',
-        fruit_peach: 'assets/images/game-objects/fruit_peach_v2.png',
-        fruit_strawberry: 'assets/images/game-objects/fruit_strawberry_v2.png',
-        fruit_grape: 'assets/images/game-objects/fruit_grape_v2.png',
-        fruit_watermelon: 'assets/images/game-objects/fruit_watermelon_v2.png',
-        hazard_bug: 'assets/images/game-objects/hazard_bug_v2.png',
-        bonus_star: 'assets/images/game-objects/bonus_star_v2.png',
-        basket_default: 'assets/images/game-objects/basket_default_v1.png',
-        fx_bug_hit: 'assets/images/game-effects/fx_bug_hit_v1.png',
-        fx_star_burst: 'assets/images/game-effects/fx_star_burst_v1.png',
-        fx_fruit_pop: 'assets/images/game-effects/fx_fruit_pop_v1.png'
+        fruit_apple: withAssetVersion('assets/images/game-objects/fruit_apple_v2.png'),
+        fruit_banana: withAssetVersion('assets/images/game-objects/fruit_banana_v2.png'),
+        fruit_orange: withAssetVersion('assets/images/game-objects/fruit_orange_v2.png'),
+        fruit_peach: withAssetVersion('assets/images/game-objects/fruit_peach_v2.png'),
+        fruit_strawberry: withAssetVersion('assets/images/game-objects/fruit_strawberry_v2.png'),
+        fruit_grape: withAssetVersion('assets/images/game-objects/fruit_grape_v2.png'),
+        fruit_watermelon: withAssetVersion('assets/images/game-objects/fruit_watermelon_v2.png'),
+        hazard_bug: withAssetVersion('assets/images/game-objects/hazard_bug_v2.png'),
+        bonus_star: withAssetVersion('assets/images/game-objects/bonus_star_v2.png'),
+        basket_default: withAssetVersion('assets/images/game-objects/basket_default_v1.png'),
+        fx_bug_hit: withAssetVersion('assets/images/game-effects/fx_bug_hit_v1.png'),
+        fx_star_burst: withAssetVersion('assets/images/game-effects/fx_star_burst_v1.png'),
+        fx_fruit_pop: withAssetVersion('assets/images/game-effects/fx_fruit_pop_v1.png')
       };
 
       const imageCache = new Map();
@@ -815,7 +821,7 @@
       }
 
       function getFruitPopTintColor(fruitKind) {
-        return fruitKind === 'watermelon' ? '#ff1a1a' : getFruitStyle(fruitKind).base;
+        return getFruitStyle(fruitKind).base;
       }
 
       function getFruitPopTintSource(baseImg, tintColor) {
@@ -850,8 +856,10 @@
         score += got;
         syncScoreDisplay();
 
-        const scoreText = multiplier > 1 ? `${basePts}x${multiplier} = +${got}` : `+${got}`;
-        addFloatText(o.x, o.y - 12, scoreText, multiplier > 1 ? '#ffd670' : o.color);
+        const scoreText = `＋${basePts}`;
+        addFloatText(o.x, o.y - 12, scoreText, o.color, {
+          badgeText: multiplier > 1 ? '×2' : ''
+        });
         if (multiplier > 1) triggerFeverHitFeedback(o.x, o.y, '#ffd670');
       }
 
@@ -1560,14 +1568,15 @@
         }
       }
 
-      function addFloatText(x, y, text, color) {
+      function addFloatText(x, y, text, color, options = null) {
         floatTexts.push({
           x, y,
           vy: -90,
           t: 0,
           life: 0.85,
           text,
-          color
+          color,
+          badgeText: options?.badgeText || ''
         });
       }
 
@@ -1819,6 +1828,38 @@
         ctx.arcTo(x+w,y+h,x,y+h,rr);
         ctx.arcTo(x,y+h,x,y,rr);
         ctx.arcTo(x,y,x+w,y,rr);
+        ctx.closePath();
+      }
+
+      function drawCloudBadgePath(x, y, w, h) {
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.20, y + h * 0.86);
+        ctx.bezierCurveTo(
+          x + w * 0.04, y + h * 0.92,
+          x + w * 0.01, y + h * 0.66,
+          x + w * 0.16, y + h * 0.56
+        );
+        ctx.bezierCurveTo(
+          x + w * 0.05, y + h * 0.42,
+          x + w * 0.11, y + h * 0.14,
+          x + w * 0.32, y + h * 0.22
+        );
+        ctx.bezierCurveTo(
+          x + w * 0.40, y + h * 0.03,
+          x + w * 0.61, y + h * 0.02,
+          x + w * 0.69, y + h * 0.20
+        );
+        ctx.bezierCurveTo(
+          x + w * 0.87, y + h * 0.10,
+          x + w * 1.00, y + h * 0.26,
+          x + w * 0.88, y + h * 0.48
+        );
+        ctx.bezierCurveTo(
+          x + w * 1.01, y + h * 0.62,
+          x + w * 0.90, y + h * 0.91,
+          x + w * 0.66, y + h * 0.84
+        );
+        ctx.lineTo(x + w * 0.22, y + h * 0.86);
         ctx.closePath();
       }
 
@@ -2182,8 +2223,9 @@
         }
         ctx.restore();
 
-        ctx.strokeStyle = '#f5ffe5';
-        ctx.lineWidth = Math.max(2, r * 0.1);
+        // Keep watermelon rim close to other fruits to avoid a hard white outline.
+        ctx.strokeStyle = 'rgba(180,245,208,.58)';
+        ctx.lineWidth = Math.max(1.4, r * 0.075);
         ctx.beginPath();
         ctx.arc(0, 0, r * 0.92, 0, Math.PI * 2);
         ctx.stroke();
@@ -2988,6 +3030,46 @@
           textFill.addColorStop(1, '#fffdf4');
           ctx.fillStyle = textFill;
           ctx.fillText(ft.text, 0, 0);
+
+          if (ft.badgeText) {
+            const mainWidth = ctx.measureText(ft.text).width;
+            const badgeFontSize = fontSize;
+            ctx.font = `${canvasBodyFontWeight} ${badgeFontSize}px ${canvasBodyFontFamily}`;
+            const badgePadX = Math.round(fontSize * 0.52);
+            const badgeH = Math.round(fontSize * 1.02);
+            const badgeW = Math.round(ctx.measureText(ft.badgeText).width + badgePadX * 2);
+            const badgeCx = mainWidth * 0.36 + badgeW * 0.56;
+            const badgeCy = -fontSize * 0.12;
+            const badgeX = -badgeW * 0.5;
+            const badgeY = -badgeH * 0.5;
+            const badgeAngle = 12 * Math.PI / 180;
+
+            ctx.save();
+            ctx.translate(badgeCx, badgeCy);
+            ctx.rotate(badgeAngle);
+
+            const badgeFill = ctx.createLinearGradient(0, badgeY, 0, badgeY + badgeH);
+            badgeFill.addColorStop(0, '#fffef8');
+            badgeFill.addColorStop(1, '#ece9e2');
+            ctx.shadowColor = 'rgba(46,53,72,.22)';
+            ctx.shadowBlur = Math.max(6, fontSize * 0.22);
+            ctx.shadowOffsetY = Math.max(2, fontSize * 0.08);
+            ctx.fillStyle = badgeFill;
+            drawCloudBadgePath(badgeX, badgeY, badgeW, badgeH);
+            ctx.fill();
+
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetY = 0;
+            ctx.strokeStyle = 'rgba(104,101,116,.72)';
+            ctx.lineWidth = Math.max(1.4, fontSize * 0.12);
+            drawCloudBadgePath(badgeX, badgeY, badgeW, badgeH);
+            ctx.stroke();
+
+            ctx.fillStyle = '#5b5664';
+            ctx.fillText(ft.badgeText, 0, badgeFontSize * 0.02);
+            ctx.restore();
+          }
           ctx.restore();
         }
       }
