@@ -256,7 +256,7 @@
       const ASSET_RETRY_MAX = 1;
       const ASSET_START_REQUIRED_RATIO = 0.0;
       // Bump this when image assets are replaced so browsers fetch fresh files.
-      const ASSET_VERSION = '2026-02-13-1';
+      const ASSET_VERSION = '2026-02-14-1';
 
       function withAssetVersion(path) {
         return `${path}?v=${encodeURIComponent(ASSET_VERSION)}`;
@@ -275,7 +275,12 @@
         basket_default: withAssetVersion('assets/images/game-objects/basket_default_v1.png'),
         fx_bug_hit: withAssetVersion('assets/images/game-effects/fx_bug_hit_v1.png'),
         fx_star_burst: withAssetVersion('assets/images/game-effects/fx_star_burst_v1.png'),
-        fx_fruit_pop: withAssetVersion('assets/images/game-effects/fx_fruit_pop_v1.png')
+        fx_fruit_pop: withAssetVersion('assets/images/game-effects/fx_fruit_pop_v1.png'),
+        background_day_sky: withAssetVersion('assets/images/backgrounds/background_day_sky_v1.png'),
+        background_fever_sky: withAssetVersion('assets/images/backgrounds/background_fever_sky_v1.png'),
+        cloud_01: withAssetVersion('assets/images/backgrounds/cloud_01_v1.png'),
+        cloud_02: withAssetVersion('assets/images/backgrounds/cloud_02_v1.png'),
+        cloud_03: withAssetVersion('assets/images/backgrounds/cloud_03_v1.png')
       };
 
       const imageCache = new Map();
@@ -2458,24 +2463,77 @@
       }
 
       function drawParallaxCloudLayer(now, dynamicFx, feverIntensity) {
-        const cloudCount = Math.max(4, Math.round((6 + dynamicFx * 4) * (reducedMotionQuery.matches ? 0.7 : 1)));
-        const tone = feverIntensity > 0.06 ? '#fff7eb' : '#ffffff';
+        function fract(v) {
+          return v - Math.floor(v);
+        }
+
+        function seeded(seed) {
+          return fract(Math.sin(seed * 12.9898) * 43758.5453);
+        }
+
+        function lerp(a, b, t) {
+          return a + (b - a) * t;
+        }
+
+        const activeTier = getActiveQualityTier();
+        const tierMul = activeTier === 'performance' ? 0.62 : activeTier === 'balanced' ? 0.82 : 1.0;
+        const motionMul = reducedMotionQuery.matches ? 0.68 : 1.0;
+        const speedTierMul = activeTier === 'performance' ? 0.74 : activeTier === 'balanced' ? 0.88 : 1.0;
+        const cloudCount = Math.max(4, Math.round((6 + dynamicFx * 4) * tierMul * motionMul));
+        const cloudImages = [
+          getImageOrNull('cloud_01'),
+          getImageOrNull('cloud_02'),
+          getImageOrNull('cloud_03')
+        ];
+        const canUseCloudSprites = cloudImages.every((img) => !!img);
+        const gameW = getGameWidth();
+        const gameH = getGameHeight();
+        const vanishX = gameW * 0.5;
+        const vanishY = gameH * 0.18;
+        const speedBase = speedTierMul * (reducedMotionQuery.matches ? 0.72 : 1.0);
+        const feverFade = 1 - clamp(feverIntensity * 0.14, 0, 0.14);
+        const secNow = now * 0.001;
+
         ctx.save();
         for (let i=0; i<cloudCount; i++) {
-          const speed = 9 + i * 2.8;
-          const travel = ((now * 0.010 * speed * backgroundMotionScale) + i * 230) % (getGameWidth() + 300);
-          const x = travel - 150;
-          const y = getGameHeight() * (0.09 + (i % 4) * 0.065) + Math.sin(now * 0.00045 + i) * 10;
-          const w = 90 + (i % 3) * 28;
-          const h = 30 + (i % 2) * 10;
+          const seed = i + 1;
+          const randA = seeded(seed * 1.07);
+          const randB = seeded(seed * 2.31);
+          const randC = seeded(seed * 3.91);
+          const randD = seeded(seed * 5.17);
+          const spawnX = -gameW * 0.22 + randA * gameW * 1.44;
+          const spawnY = gameH * (0.46 + randB * 0.46);
+          const travelSpeed = (0.90 + randC * 0.34) * speedBase * (0.84 + dynamicFx * 0.34);
+          const duration = (9.8 + (i % 3) * 1.15) / Math.max(0.24, travelSpeed);
+          const progress = fract((secNow + randD * duration) / duration);
+          const k = progress * progress * progress;
+          const scale = Math.max(0.14, 1 - k * 0.86);
+          const x = lerp(spawnX, vanishX, k);
+          const y = lerp(spawnY, vanishY, k);
+          const baseAlpha = (0.18 + (i % 3) * 0.06) * (0.7 + dynamicFx * 0.3) * feverFade;
+          const alpha = clamp(baseAlpha * (1 - k), 0, 0.34);
+          if (alpha <= 0.003) continue;
 
-          ctx.globalAlpha = (0.20 + (i % 3) * 0.06) * (0.7 + dynamicFx * 0.3);
-          ctx.fillStyle = tone;
-          ctx.beginPath();
-          ctx.ellipse(x, y, w * 0.46, h * 0.5, 0, 0, Math.PI * 2);
-          ctx.ellipse(x + w * 0.24, y - h * 0.16, w * 0.34, h * 0.42, 0, 0, Math.PI * 2);
-          ctx.ellipse(x - w * 0.24, y - h * 0.10, w * 0.30, h * 0.38, 0, 0, Math.PI * 2);
-          ctx.fill();
+          ctx.globalAlpha = alpha;
+          if (canUseCloudSprites) {
+            const img = cloudImages[i % cloudImages.length];
+            const imgW = Math.max(1, img.naturalWidth || img.width || 1);
+            const imgH = Math.max(1, img.naturalHeight || img.height || 1);
+            const drawW = gameW * (0.11 + (i % 3) * 0.028 + dynamicFx * 0.026) * scale;
+            const drawH = drawW * (imgH / imgW);
+            ctx.drawImage(img, x - drawW * 0.5, y - drawH * 0.5, drawW, drawH);
+          } else {
+            const baseW = gameW * (0.12 + (i % 3) * 0.022 + dynamicFx * 0.018);
+            const w = baseW * scale;
+            const h = w * (0.29 + (i % 2) * 0.05);
+            const tone = feverIntensity > 0.06 ? '#fff7eb' : '#ffffff';
+            ctx.fillStyle = tone;
+            ctx.beginPath();
+            ctx.ellipse(x, y, w * 0.45, h * 0.50, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + w * 0.24, y - h * 0.16, w * 0.34, h * 0.42, 0, 0, Math.PI * 2);
+            ctx.ellipse(x - w * 0.24, y - h * 0.10, w * 0.30, h * 0.38, 0, 0, Math.PI * 2);
+            ctx.fill();
+          }
         }
         ctx.restore();
       }
@@ -2591,95 +2649,112 @@
         const nightBlend = clamp((feverIntensity - 0.08) / 0.38, 0, 1);
         const activeTier = getActiveQualityTier();
         const staticKey = `${getGameWidth()}x${getGameHeight()}:${root.dataset.device || 'desktop'}:${activeTier}`;
+        const daySky = getImageOrNull('background_day_sky');
+        const feverSky = getImageOrNull('background_fever_sky');
+        const useSkyImages = !!(daySky && feverSky);
 
-        if (!staticBackgroundLayer || staticBackgroundLayerKey !== staticKey) {
-          staticBackgroundLayer = document.createElement('canvas');
-          staticBackgroundLayer.width = getGameWidth();
-          staticBackgroundLayer.height = getGameHeight();
-          staticBackgroundLayerKey = staticKey;
-          const bgCtx = staticBackgroundLayer.getContext('2d');
-          if (bgCtx) {
-            bgCtx.imageSmoothingEnabled = true;
-            if ('imageSmoothingQuality' in bgCtx) bgCtx.imageSmoothingQuality = 'high';
+        if (useSkyImages) {
+          ctx.save();
+          ctx.imageSmoothingEnabled = true;
+          if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
+          const useFeverSky = feverState.phase !== 'idle' && feverIntensity > 0.001;
+          const skyImage = useFeverSky ? feverSky : daySky;
+          ctx.drawImage(skyImage, 0, 0, getGameWidth(), getGameHeight());
+          ctx.restore();
+        } else {
+          if (!staticBackgroundLayer || staticBackgroundLayerKey !== staticKey) {
+            staticBackgroundLayer = document.createElement('canvas');
+            staticBackgroundLayer.width = getGameWidth();
+            staticBackgroundLayer.height = getGameHeight();
+            staticBackgroundLayerKey = staticKey;
+            const bgCtx = staticBackgroundLayer.getContext('2d');
+            if (bgCtx) {
+              bgCtx.imageSmoothingEnabled = true;
+              if ('imageSmoothingQuality' in bgCtx) bgCtx.imageSmoothingQuality = 'high';
 
-            const sky = bgCtx.createLinearGradient(0, 0, 0, getGameHeight());
-            sky.addColorStop(0, '#65c0ff');
-            sky.addColorStop(0.5, '#a9ecff');
-            sky.addColorStop(1, '#dbffc9');
-            bgCtx.fillStyle = sky;
-            bgCtx.fillRect(0, 0, getGameWidth(), getGameHeight());
+              const sky = bgCtx.createLinearGradient(0, 0, 0, getGameHeight());
+              sky.addColorStop(0, '#65c0ff');
+              sky.addColorStop(0.5, '#a9ecff');
+              sky.addColorStop(1, '#dbffc9');
+              bgCtx.fillStyle = sky;
+              bgCtx.fillRect(0, 0, getGameWidth(), getGameHeight());
 
-            const sun = bgCtx.createRadialGradient(
-              getGameWidth() * 0.82,
-              getGameHeight() * 0.12,
-              10,
-              getGameWidth() * 0.82,
-              getGameHeight() * 0.12,
-              getGameWidth() * 0.16
-            );
-            sun.addColorStop(0, 'rgba(255,255,245,0.95)');
-            sun.addColorStop(0.45, 'rgba(255,240,174,0.55)');
-            sun.addColorStop(1, 'rgba(255,220,131,0)');
-            bgCtx.globalAlpha = 0.55;
-            bgCtx.fillStyle = sun;
-            bgCtx.fillRect(0, 0, getGameWidth(), getGameHeight());
-            bgCtx.globalAlpha = 1;
+              const sun = bgCtx.createRadialGradient(
+                getGameWidth() * 0.82,
+                getGameHeight() * 0.12,
+                10,
+                getGameWidth() * 0.82,
+                getGameHeight() * 0.12,
+                getGameWidth() * 0.16
+              );
+              sun.addColorStop(0, 'rgba(255,255,245,0.95)');
+              sun.addColorStop(0.45, 'rgba(255,240,174,0.55)');
+              sun.addColorStop(1, 'rgba(255,220,131,0)');
+              bgCtx.globalAlpha = 0.55;
+              bgCtx.fillStyle = sun;
+              bgCtx.fillRect(0, 0, getGameWidth(), getGameHeight());
+              bgCtx.globalAlpha = 1;
 
-            const terrainLayers = [
-              { y: getGameHeight() * 0.72, amp: 24, step: 72, color: '#9fdfa3', alpha: 0.62, phase: 0 },
-              { y: getGameHeight() * 0.82, amp: 18, step: 64, color: '#7fce7e', alpha: 0.74, phase: 1.2 },
-              { y: getGameHeight() * 0.90, amp: 14, step: 56, color: '#63b95b', alpha: 0.92, phase: 2.2 }
-            ];
-            for (const layer of terrainLayers) {
-              bgCtx.save();
-              bgCtx.globalAlpha = layer.alpha;
-              bgCtx.fillStyle = layer.color;
-              bgCtx.beginPath();
-              bgCtx.moveTo(0, getGameHeight());
-              for (let x = 0; x <= getGameWidth() + layer.step; x += layer.step) {
-                const y = layer.y
-                  + Math.sin(x * 0.006 + layer.phase) * layer.amp
-                  + Math.sin(x * 0.013 + layer.phase * 1.2) * layer.amp * 0.42;
-                bgCtx.lineTo(x, y);
+              const terrainLayers = [
+                { y: getGameHeight() * 0.72, amp: 24, step: 72, color: '#9fdfa3', alpha: 0.62, phase: 0 },
+                { y: getGameHeight() * 0.82, amp: 18, step: 64, color: '#7fce7e', alpha: 0.74, phase: 1.2 },
+                { y: getGameHeight() * 0.90, amp: 14, step: 56, color: '#63b95b', alpha: 0.92, phase: 2.2 }
+              ];
+              for (const layer of terrainLayers) {
+                bgCtx.save();
+                bgCtx.globalAlpha = layer.alpha;
+                bgCtx.fillStyle = layer.color;
+                bgCtx.beginPath();
+                bgCtx.moveTo(0, getGameHeight());
+                for (let x = 0; x <= getGameWidth() + layer.step; x += layer.step) {
+                  const y = layer.y
+                    + Math.sin(x * 0.006 + layer.phase) * layer.amp
+                    + Math.sin(x * 0.013 + layer.phase * 1.2) * layer.amp * 0.42;
+                  bgCtx.lineTo(x, y);
+                }
+                bgCtx.lineTo(getGameWidth(), getGameHeight());
+                bgCtx.closePath();
+                bgCtx.fill();
+                bgCtx.restore();
               }
-              bgCtx.lineTo(getGameWidth(), getGameHeight());
-              bgCtx.closePath();
-              bgCtx.fill();
-              bgCtx.restore();
             }
+          }
+
+          if (staticBackgroundLayer) {
+            ctx.drawImage(staticBackgroundLayer, 0, 0, getGameWidth(), getGameHeight());
           }
         }
 
-        if (staticBackgroundLayer) {
-          ctx.drawImage(staticBackgroundLayer, 0, 0, getGameWidth(), getGameHeight());
-        }
-
-        if (nightBlend > 0.001) {
+        if (!useSkyImages && nightBlend > 0.001) {
           ctx.save();
-          ctx.globalAlpha = 0.40 + nightBlend * 0.60;
+          const nightBackdropAlpha = 0.40 + nightBlend * 0.60;
+          ctx.globalAlpha = nightBackdropAlpha;
           drawNightCityBackdrop(now, dynamicFx, clamp(0.66 + feverIntensity * 0.44, 0, 1.2));
           ctx.restore();
         }
 
         drawParallaxCloudLayer(now, dynamicFx, feverIntensity * (1 - nightBlend * 0.45));
-        drawFeverBackdrop(now, feverState, dynamicFx);
 
-        const tierMoteMul = activeTier === 'performance' ? 0.58 : activeTier === 'balanced' ? 0.78 : 1.0;
-        const moteCount = Math.max(4, Math.round((14 + feverIntensity * 12) * dynamicFx * tierMoteMul));
-        ctx.save();
-        ctx.globalAlpha = (0.18 + feverIntensity * 0.12) * (0.46 + dynamicFx * 0.54);
-        for (let i=0; i<moteCount; i++) {
-          const speed = (0.04 + feverIntensity * 0.04) * backgroundMotionScale;
-          const x = (i * 137 + (now * speed)) % getGameWidth();
-          const y = 84 + (i * 49) % Math.max(180, Math.round(330 * (0.62 + dynamicFx * 0.38)));
-          ctx.beginPath();
-          ctx.arc(x, y, (2 + (i % 3)) * (0.75 + dynamicFx * 0.25), 0, Math.PI*2);
-          ctx.fillStyle = ['#ff8eb9','#ffe18f','#8bd7ff','#b8ff9b','#ffffff'][i % 5];
-          ctx.fill();
+        if (!useSkyImages) {
+          drawFeverBackdrop(now, feverState, dynamicFx);
+
+          const tierMoteMul = activeTier === 'performance' ? 0.58 : activeTier === 'balanced' ? 0.78 : 1.0;
+          const moteCount = Math.max(4, Math.round((14 + feverIntensity * 12) * dynamicFx * tierMoteMul));
+          ctx.save();
+          ctx.globalAlpha = (0.18 + feverIntensity * 0.12) * (0.46 + dynamicFx * 0.54);
+          for (let i=0; i<moteCount; i++) {
+            const speed = (0.04 + feverIntensity * 0.04) * backgroundMotionScale;
+            const x = (i * 137 + (now * speed)) % getGameWidth();
+            const y = 84 + (i * 49) % Math.max(180, Math.round(330 * (0.62 + dynamicFx * 0.38)));
+            ctx.beginPath();
+            ctx.arc(x, y, (2 + (i % 3)) * (0.75 + dynamicFx * 0.25), 0, Math.PI*2);
+            ctx.fillStyle = ['#ff8eb9','#ffe18f','#8bd7ff','#b8ff9b','#ffffff'][i % 5];
+            ctx.fill();
+          }
+          ctx.restore();
+
+          drawFeverShockwavesLayer();
         }
-        ctx.restore();
-
-        drawFeverShockwavesLayer();
       }
 
       function drawBasket() {

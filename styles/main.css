@@ -21,8 +21,14 @@
       --fever-cool:#67b8ff;
       --ui-scale:1;
       --hud-scale:1;
-      --life-heart-size:calc(60px * var(--hud-scale));
-      --life-heart-gap:calc(6px * var(--hud-scale));
+      --hud-card-min-h:calc(66px * var(--hud-scale));
+      --hud-card-pad-y:calc(7px * var(--hud-scale));
+      --hud-card-pad-x:calc(12px * var(--hud-scale));
+      --hud-value-min-h:calc(28px * var(--hud-scale));
+      --hud-score-gap:calc(4px * var(--hud-scale));
+      --life-heart-size:calc(54px * var(--hud-scale));
+      --life-heart-gap:calc(2.25px * var(--hud-scale));
+      --life-heart-optical-inset-ratio:0.1248751249;
       --title-scale:1;
       --fx-density:1;
       --fruit-scale:1;
@@ -146,13 +152,13 @@
     }
 
     .stat-card{
-      min-height:calc(74px * var(--hud-scale));
+      min-height:var(--hud-card-min-h);
       border-radius:20px;
       border:2px solid var(--panel-border);
       background:var(--panel);
       box-shadow:var(--shadow-soft);
       backdrop-filter:blur(2px);
-      padding:calc(10px * var(--hud-scale)) calc(12px * var(--hud-scale));
+      padding:var(--hud-card-pad-y) var(--hud-card-pad-x);
       display:grid;
       gap:4px;
       align-content:center;
@@ -160,7 +166,7 @@
     }
 
     .stat-label{
-      font-size:calc(12px * var(--hud-scale));
+      font-size:calc(15px * var(--hud-scale));
       line-height:1.2;
       font-weight:var(--font-weight-heading-sub);
       letter-spacing:.9px;
@@ -175,7 +181,7 @@
     .stat-value{
       display:inline-flex;
       align-items:center;
-      min-height:calc(32px * var(--hud-scale));
+      min-height:var(--hud-value-min-h);
       gap:8px;
       min-width:0;
       font-weight:var(--font-weight-body);
@@ -191,18 +197,21 @@
     .score-card .stat-value{
       color:#ff5b9c;
       margin-top:0;
-      align-self:start;
+      margin-inline-start:calc(var(--score-left-baseline) - var(--score-shell-inline-pad));
+      align-self:flex-end;
       text-shadow:
         0 2px 0 rgba(255,255,255,.84),
         0 0 12px rgba(255,129,177,.28);
     }
 
     .score-card{
+      --score-left-baseline:0px;
+      --score-shell-inline-pad:12px;
       grid-template-rows:auto auto;
       align-content:start;
-      gap:calc(10px * var(--hud-scale));
-      padding-top:calc(10px * var(--hud-scale));
-      min-height:calc(74px * var(--hud-scale));
+      gap:var(--hud-score-gap);
+      padding-top:var(--hud-card-pad-y);
+      min-height:var(--hud-card-min-h);
     }
 
     .hud-main > .stat-card{
@@ -216,11 +225,17 @@
       align-items:center;
     }
 
+    .hud-main > .score-card .stat-value{
+      align-self:stretch;
+      align-items:center;
+    }
+
     .score-card .stat-label{
       position:relative;
       z-index:3;
       line-height:1.2;
-      margin-left:calc(1px * var(--hud-scale));
+      margin-left:0;
+      padding-inline-start:var(--score-left-baseline);
     }
 
     .score-shell{
@@ -229,10 +244,14 @@
       align-items:center;
       gap:8px;
       min-width:0;
-      padding:4px 12px 5px;
+      padding:2px 12px 2px;
       margin-top:0;
       border-radius:999px;
       isolation:isolate;
+    }
+
+    .score-card .score-shell{
+      margin-inline-start:0;
     }
 
     .score-shell::before{
@@ -319,6 +338,8 @@
     #score{
       display:inline-block;
       min-width:2ch;
+      position:relative;
+      top:2px;
       transform-origin:50% 68%;
       transition:transform .09s linear, text-shadow .09s linear, color .18s ease, filter .1s linear;
       white-space:nowrap;
@@ -331,6 +352,14 @@
       gap:var(--life-heart-gap);
       min-width:fit-content;
       min-height:var(--life-heart-size);
+    }
+
+    .stat-card[aria-label="ライフ"] .stat-value{
+      justify-content:flex-start;
+    }
+
+    .stat-card[aria-label="ライフ"] .hearts{
+      margin-inline-start:0;
     }
 
     .life-heart{
@@ -743,6 +772,11 @@
     }
 
     @media (max-width: 980px) {
+      :root{
+        --hud-card-min-h:calc(62px * var(--hud-scale));
+        --hud-value-min-h:calc(26px * var(--hud-scale));
+      }
+
       .wrap{
         width:min(100vw, 980px);
       }
@@ -750,20 +784,16 @@
       .hud-main{
         gap:8px;
       }
-
-      .stat-card{
-        min-height:calc(66px * var(--hud-scale));
-      }
-
-      .score-card{
-        min-height:calc(74px * var(--hud-scale));
-      }
     }
 
     @media (max-width: 700px) {
       :root{
-        --life-heart-size:clamp(42px, 13.2vw, 56px);
-        --life-heart-gap:clamp(2px, 1.2vw, 5px);
+        --hud-card-min-h:58px;
+        --hud-card-pad-y:6px;
+        --hud-value-min-h:24px;
+        --hud-score-gap:4px;
+        --life-heart-size:clamp(38px, 11.88vw, 50px);
+        --life-heart-gap:clamp(0.75px, 0.675vw, 2.25px);
       }
 
       body{ place-items:stretch; }
@@ -782,13 +812,6 @@
 
       .stat-card{
         border-radius:16px;
-        padding:8px 9px;
-      }
-
-      .score-card{
-        gap:7px;
-        padding-top:8px;
-        min-height:calc(74px * var(--hud-scale));
       }
 
       .score-card .stat-value{
@@ -800,7 +823,7 @@
       }
 
       .stat-label{
-        font-size:11px;
+        font-size:13px;
       }
 
       .stat-value{
