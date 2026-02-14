@@ -54,8 +54,8 @@
       overflow:hidden;
       color:var(--shell-ink);
       background:
-        radial-gradient(1300px 650px at -6% -8%, #ffffffc9 0 36%, transparent 37%),
-        radial-gradient(1100px 560px at 108% 6%, #fff7d9bf 0 38%, transparent 39%),
+        radial-gradient(1300px 650px at -6% 18%, #ffffffc9 0 36%, transparent 37%),
+        radial-gradient(1100px 560px at 108% 24%, #fff7d9bf 0 38%, transparent 39%),
         linear-gradient(180deg, var(--sky-top) 0%, var(--sky-mid) 54%, var(--sky-bottom) 100%);
     }
 
@@ -75,7 +75,7 @@
       width:min(44vw, 640px);
       height:min(24vw, 340px);
       left:-6vw;
-      top:6vh;
+      top:22vh;
       background:
         radial-gradient(circle at 18% 44%, #ffffffd8 0 20%, transparent 21%),
         radial-gradient(circle at 54% 50%, #ffffffda 0 26%, transparent 27%),
@@ -86,7 +86,7 @@
       width:min(36vw, 520px);
       height:min(20vw, 300px);
       right:-2vw;
-      top:14vh;
+      top:30vh;
       background:
         radial-gradient(circle at 20% 52%, #fff7dcdd 0 22%, transparent 23%),
         radial-gradient(circle at 56% 44%, #ffffffd1 0 28%, transparent 29%),

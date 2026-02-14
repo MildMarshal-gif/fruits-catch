@@ -2463,79 +2463,81 @@
       }
 
       function drawParallaxCloudLayer(now, dynamicFx, feverIntensity) {
-        function fract(v) {
-          return v - Math.floor(v);
-        }
-
-        function seeded(seed) {
-          return fract(Math.sin(seed * 12.9898) * 43758.5453);
-        }
-
-        function lerp(a, b, t) {
-          return a + (b - a) * t;
-        }
-
-        const activeTier = getActiveQualityTier();
-        const tierMul = activeTier === 'performance' ? 0.62 : activeTier === 'balanced' ? 0.82 : 1.0;
-        const motionMul = reducedMotionQuery.matches ? 0.68 : 1.0;
-        const speedTierMul = activeTier === 'performance' ? 0.74 : activeTier === 'balanced' ? 0.88 : 1.0;
-        const cloudCount = Math.max(4, Math.round((6 + dynamicFx * 4) * tierMul * motionMul));
+        const gameW = getGameWidth();
+        const gameH = getGameHeight();
+        const secNow = now * 0.001;
+        const motionMul = reducedMotionQuery.matches ? 0.55 : 1.0;
+        const viewportScale = Math.min(gameW / BASE_CANVAS_W, gameH / BASE_CANVAS_H);
+        const motionScale = clamp(viewportScale, 0.72, 1.45);
+        const swayX = 18 * motionScale * motionMul;
+        const swayY = 12 * motionScale * motionMul;
+        const xBase = [0.22, 0.50, 0.78];
+        const yBase = [0.74, 0.70, 0.76];
+        const widthBase = [0.17, 0.15, 0.16];
+        const fallbackHeightRatio = [0.31, 0.33, 0.30];
+        const alphaBase = [0.30, 0.28, 0.26];
+        const phase = [0.42, 2.14, 4.08];
+        const pulseAmp = 0.04;
+        const driftSpeedX = 0.58 * motionMul;
+        const driftSpeedY = 0.44 * motionMul;
+        const pulseSpeed = 1.02 * motionMul;
+        const feverMix = clamp(feverIntensity, 0, 1);
+        const feverBoost = feverMix * 0.10;
+        const cloudTone = `rgb(255,${Math.round(255 - feverMix * 2)},${Math.round(255 - feverMix * 13)})`;
         const cloudImages = [
           getImageOrNull('cloud_01'),
           getImageOrNull('cloud_02'),
           getImageOrNull('cloud_03')
         ];
         const canUseCloudSprites = cloudImages.every((img) => !!img);
-        const gameW = getGameWidth();
-        const gameH = getGameHeight();
-        const vanishX = gameW * 0.5;
-        const vanishY = gameH * 0.18;
-        const speedBase = speedTierMul * (reducedMotionQuery.matches ? 0.72 : 1.0);
-        const feverFade = 1 - clamp(feverIntensity * 0.14, 0, 0.14);
-        const secNow = now * 0.001;
 
         ctx.save();
-        for (let i=0; i<cloudCount; i++) {
-          const seed = i + 1;
-          const randA = seeded(seed * 1.07);
-          const randB = seeded(seed * 2.31);
-          const randC = seeded(seed * 3.91);
-          const randD = seeded(seed * 5.17);
-          const spawnX = -gameW * 0.22 + randA * gameW * 1.44;
-          const spawnY = gameH * (0.46 + randB * 0.46);
-          const travelSpeed = (0.90 + randC * 0.34) * speedBase * (0.84 + dynamicFx * 0.34);
-          const duration = (9.8 + (i % 3) * 1.15) / Math.max(0.24, travelSpeed);
-          const progress = fract((secNow + randD * duration) / duration);
-          const k = progress * progress * progress;
-          const scale = Math.max(0.14, 1 - k * 0.86);
-          const x = lerp(spawnX, vanishX, k);
-          const y = lerp(spawnY, vanishY, k);
-          const baseAlpha = (0.18 + (i % 3) * 0.06) * (0.7 + dynamicFx * 0.3) * feverFade;
-          const alpha = clamp(baseAlpha * (1 - k), 0, 0.34);
-          if (alpha <= 0.003) continue;
+        for (let i = 0; i < 3; i++) {
+          const pulse = 1 + Math.sin(secNow * pulseSpeed + phase[i] * 1.17) * pulseAmp;
+          const drawW = gameW * widthBase[i] * pulse;
+          const rawX = gameW * xBase[i] + Math.sin(secNow * driftSpeedX + phase[i]) * swayX;
+          const rawY = gameH * yBase[i] + Math.cos(secNow * driftSpeedY + phase[i]) * swayY;
+          const alpha = clamp(alphaBase[i] + feverBoost, 0.20, 0.45);
 
-          ctx.globalAlpha = alpha;
+          let drawH = drawW * fallbackHeightRatio[i];
+          let halfW = drawW * 0.60;
+          let halfH = drawH * 0.60;
+
           if (canUseCloudSprites) {
-            const img = cloudImages[i % cloudImages.length];
-            const imgW = Math.max(1, img.naturalWidth || img.width || 1);
-            const imgH = Math.max(1, img.naturalHeight || img.height || 1);
-            const drawW = gameW * (0.11 + (i % 3) * 0.028 + dynamicFx * 0.026) * scale;
-            const drawH = drawW * (imgH / imgW);
+            const sprite = cloudImages[i];
+            const imgW = Math.max(1, sprite.naturalWidth || sprite.width || 1);
+            const imgH = Math.max(1, sprite.naturalHeight || sprite.height || 1);
+            drawH = drawW * (imgH / imgW);
+            halfW = drawW * 0.5;
+            halfH = drawH * 0.5;
+          }
+
+          const x = clamp(rawX, halfW, Math.max(halfW, gameW - halfW));
+          const y = clamp(rawY, halfH, Math.max(halfH, gameH - halfH));
+          ctx.globalAlpha = alpha;
+
+          if (canUseCloudSprites) {
+            const img = cloudImages[i];
             ctx.drawImage(img, x - drawW * 0.5, y - drawH * 0.5, drawW, drawH);
+            if (feverMix > 0.001) {
+              ctx.save();
+              ctx.globalCompositeOperation = 'source-atop';
+              ctx.globalAlpha = alpha * feverMix * 0.18;
+              ctx.fillStyle = cloudTone;
+              ctx.fillRect(x - drawW * 0.5, y - drawH * 0.5, drawW, drawH);
+              ctx.restore();
+            }
           } else {
-            const baseW = gameW * (0.12 + (i % 3) * 0.022 + dynamicFx * 0.018);
-            const w = baseW * scale;
-            const h = w * (0.29 + (i % 2) * 0.05);
-            const tone = feverIntensity > 0.06 ? '#fff7eb' : '#ffffff';
-            ctx.fillStyle = tone;
+            ctx.fillStyle = cloudTone;
             ctx.beginPath();
-            ctx.ellipse(x, y, w * 0.45, h * 0.50, 0, 0, Math.PI * 2);
-            ctx.ellipse(x + w * 0.24, y - h * 0.16, w * 0.34, h * 0.42, 0, 0, Math.PI * 2);
-            ctx.ellipse(x - w * 0.24, y - h * 0.10, w * 0.30, h * 0.38, 0, 0, Math.PI * 2);
+            ctx.ellipse(x, y, drawW * 0.46, drawH * 0.50, 0, 0, Math.PI * 2);
+            ctx.ellipse(x + drawW * 0.24, y - drawH * 0.15, drawW * 0.34, drawH * 0.42, 0, 0, Math.PI * 2);
+            ctx.ellipse(x - drawW * 0.24, y - drawH * 0.11, drawW * 0.30, drawH * 0.39, 0, 0, Math.PI * 2);
             ctx.fill();
           }
         }
         ctx.restore();
+        void dynamicFx;
       }
 
       function drawTerrainLayer(baseY, amp, step, color, alpha, phase) {
