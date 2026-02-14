@@ -164,6 +164,7 @@
 
       // Game constants
       const MAX_MISSES = FC.constants.MAX_MISSES;
+      const FEVER_BADGE_CLOUD_SCALE = 1.55;
 
       // Basket (kid-friendly big)
       const basket = {
@@ -3036,9 +3037,13 @@
             const badgeFontSize = fontSize;
             ctx.font = `${canvasBodyFontWeight} ${badgeFontSize}px ${canvasBodyFontFamily}`;
             const badgePadX = Math.round(fontSize * 0.52);
-            const badgeH = Math.round(fontSize * 1.02);
-            const badgeW = Math.round(ctx.measureText(ft.badgeText).width + badgePadX * 2);
-            const badgeCx = mainWidth * 0.36 + badgeW * 0.56;
+            const isFeverBadge = ft.badgeText === '×2';
+            const cloudScale = isFeverBadge ? FEVER_BADGE_CLOUD_SCALE : 1;
+            const baseBadgeH = Math.round(fontSize * 1.02);
+            const baseBadgeW = Math.round(ctx.measureText(ft.badgeText).width + badgePadX * 2);
+            const badgeH = Math.round(baseBadgeH * cloudScale);
+            const badgeW = Math.round(baseBadgeW * cloudScale);
+            const badgeCx = mainWidth * 0.36 + baseBadgeW * 0.56;
             const badgeCy = -fontSize * 0.12;
             const badgeX = -badgeW * 0.5;
             const badgeY = -badgeH * 0.5;
@@ -3062,7 +3067,8 @@
             ctx.shadowBlur = 0;
             ctx.shadowOffsetY = 0;
             ctx.strokeStyle = 'rgba(104,101,116,.72)';
-            ctx.lineWidth = Math.max(1.4, fontSize * 0.12);
+            const cloudStrokeScale = 1 + (cloudScale - 1) * 0.35;
+            ctx.lineWidth = Math.max(1.4, fontSize * 0.12 * cloudStrokeScale);
             drawCloudBadgePath(badgeX, badgeY, badgeW, badgeH);
             ctx.stroke();
 
