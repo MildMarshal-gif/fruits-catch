@@ -1,6 +1,8 @@
 ﻿(() => {
   const FC = (window.FC = window.FC || {});
   const START_LOGO_SRC = './assets/images/ui/logo/fruit-catch-start-logo_v1.png';
+  const HEART_ON_ICON_SRC = './assets/images/ui/life/heart-on.png';
+  const HEART_OFF_ICON_SRC = './assets/images/ui/life/heart-off.png';
 
   function getLivesLeft(maxMisses, misses) {
     return Math.max(0, maxMisses - misses);
@@ -86,7 +88,7 @@
     }
 
     const pulseGain = reducedMotion ? 0.62 : 1.0;
-    const scale = 1 + scorePulse * (hot ? 0.22 : 0.12) * pulseGain;
+    const scale = 1 + scorePulse * (hot ? 0.18 : 0.12) * pulseGain;
     const glow = Math.round((hot ? 10 : 6) + scorePulse * (hot ? 16 : 10) * pulseGain);
     scoreEl.style.transform = `scale(${scale.toFixed(3)})`;
     scoreEl.style.textShadow = hot
@@ -95,8 +97,8 @@
     scoreEl.style.color = hot ? '#7de2ff' : '';
     scoreEl.style.filter = hot ? `drop-shadow(0 0 ${Math.round(glow * 0.7)}px rgba(255,174,210,.42))` : '';
 
-    const mulScale = 1 + scorePulse * (hot ? 0.14 : 0.05) * pulseGain;
-    scoreMulEl.style.transform = `translateY(${-Math.round(scorePulse * (hot ? 3 : 1))}px) scale(${mulScale.toFixed(3)})`;
+    const mulScale = 1 + scorePulse * (hot ? 0.11 : 0.05) * pulseGain;
+    scoreMulEl.style.transform = `translateY(${-Math.round(scorePulse * (hot ? 1 : 1))}px) scale(${mulScale.toFixed(3)})`;
     scoreMulEl.style.filter = hot ? `drop-shadow(0 0 ${Math.round(glow * 0.6)}px rgba(255,255,255,.6))` : '';
   }
 
@@ -105,9 +107,26 @@
     for (let i = 0; i < maxMisses; i++) {
       const heart = document.createElement('span');
       const alive = i < (maxMisses - misses);
+      const heartIcon = document.createElement('img');
+      const fallback = document.createElement('span');
+      const iconSrc = alive ? HEART_ON_ICON_SRC : HEART_OFF_ICON_SRC;
+
       heart.setAttribute('class', `life-heart ${alive ? 'on' : 'off'}`);
-      heart.textContent = '♥';
       heart.setAttribute('aria-hidden', 'true');
+
+      heartIcon.className = 'life-heart-icon';
+      heartIcon.alt = '';
+      heartIcon.decoding = 'async';
+      heartIcon.src = iconSrc;
+      heartIcon.addEventListener('error', () => {
+        heart.classList.add('icon-error');
+      });
+
+      fallback.className = 'life-heart-fallback';
+      fallback.textContent = '♥';
+      fallback.setAttribute('aria-hidden', 'true');
+
+      heart.append(heartIcon, fallback);
       heartsEl.appendChild(heart);
     }
     heartsEl.setAttribute('aria-label', `ライフ ${Math.max(0, maxMisses - misses)} / ${maxMisses}`);
