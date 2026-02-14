@@ -21,6 +21,8 @@
       --fever-cool:#67b8ff;
       --ui-scale:1;
       --hud-scale:1;
+      --life-heart-size:calc(60px * var(--hud-scale));
+      --life-heart-gap:calc(6px * var(--hud-scale));
       --title-scale:1;
       --fx-density:1;
       --fruit-scale:1;
@@ -326,26 +328,25 @@
       display:flex;
       align-items:center;
       flex-wrap:nowrap;
-      gap:calc(6px * var(--hud-scale));
+      gap:var(--life-heart-gap);
       min-width:fit-content;
-      min-height:calc(24px * var(--hud-scale));
+      min-height:var(--life-heart-size);
     }
 
     .life-heart{
-      width:calc(24px * var(--hud-scale));
-      height:calc(24px * var(--hud-scale));
+      width:var(--life-heart-size);
+      height:var(--life-heart-size);
       position:relative;
       overflow:hidden;
-      border-radius:8px;
-      border:2px solid #e62f63;
-      background:linear-gradient(180deg, #ffd8e5, #ffc0d9);
+      border:none;
+      background:transparent;
       color:#b61544;
       display:grid;
       place-items:center;
       font-size:calc(13px * var(--hud-scale));
       line-height:1;
       font-weight:900;
-      box-shadow:0 5px 10px rgba(230,47,99,.18);
+      box-shadow:none;
     }
 
     .life-heart-icon{
@@ -372,8 +373,8 @@
     }
 
     .life-heart.off{
-      border-color:#93a4bd;
-      background:linear-gradient(180deg, #edf1f8, #d9e1ee);
+      border:none;
+      background:transparent;
       color:#71839e;
       box-shadow:none;
     }
@@ -760,6 +761,11 @@
     }
 
     @media (max-width: 700px) {
+      :root{
+        --life-heart-size:clamp(42px, 13.2vw, 56px);
+        --life-heart-gap:clamp(2px, 1.2vw, 5px);
+      }
+
       body{ place-items:stretch; }
 
       .wrap{
@@ -799,11 +805,6 @@
 
       .stat-value{
         font-size:24px;
-      }
-
-      .life-heart{
-        width:22px;
-        height:22px;
       }
 
       .btns button{
