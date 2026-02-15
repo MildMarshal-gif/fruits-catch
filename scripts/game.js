@@ -33,6 +33,7 @@
           fruitScale: 1.05,
           basketScale: 0.61,
           pauseScale: 0.78,
+          cloudScale: 1.3,
           tapTarget: 44
         },
         tablet: {
@@ -43,6 +44,7 @@
           fruitScale: 1.02,
           basketScale: 0.96,
           pauseScale: 0.90,
+          cloudScale: 1.0,
           tapTarget: 42
         },
         desktop: {
@@ -53,6 +55,7 @@
           fruitScale: 1.0,
           basketScale: 1.0,
           pauseScale: 1.0,
+          cloudScale: 1.0,
           tapTarget: 40
         }
       };
@@ -66,6 +69,7 @@
       let fruitRadiusMin = BASE_FRUIT_RADIUS_MIN;
       let fruitRadiusMax = BASE_FRUIT_RADIUS_MAX;
       let fxDensity = 1;
+      let cloudScale = 1;
       let particleDensity = 1;
       let backgroundMotionScale = 1;
       let rotationMotionScale = 1;
@@ -256,7 +260,7 @@
       const ASSET_RETRY_MAX = 1;
       const ASSET_START_REQUIRED_RATIO = 0.0;
       // Bump this when image assets are replaced so browsers fetch fresh files.
-      const ASSET_VERSION = '2026-02-15-2';
+      const ASSET_VERSION = '2026-02-15-3';
 
       function withAssetVersion(path) {
         return `${path}?v=${encodeURIComponent(ASSET_VERSION)}`;
@@ -1360,6 +1364,7 @@
         root.style.setProperty('--hud-inset-side', `${hudSide}px`);
 
         fxDensity = fx;
+        cloudScale = preset.cloudScale;
         particleDensity = clamp(fx * (reducedMotion ? 0.65 : 0.92), 0.14, 1.06);
         const tierMotionMul = activeTier === 'performance' ? 0.72 : activeTier === 'balanced' ? 0.88 : 1.0;
         backgroundMotionScale = clamp(motionScale * (reducedMotion ? 0.88 : 1.00) * tierMotionMul, 0.26, 1.00);
@@ -2496,7 +2501,7 @@
         ctx.save();
         for (let i = 0; i < 3; i++) {
           const pulse = 1 + Math.sin(secNow * pulseSpeed + phase[i] * 1.17) * pulseAmp;
-          const drawW = gameW * widthBase[i] * pulse;
+          const drawW = gameW * widthBase[i] * pulse * cloudScale;
           const rawX = gameW * xBase[i] + Math.sin(secNow * driftSpeedX + phase[i]) * swayX;
           const rawY = gameH * yBase[i] + Math.cos(secNow * driftSpeedY + phase[i]) * swayY;
           const alpha = feverMix > 0.001 ? 0 : alphaBase[i];
