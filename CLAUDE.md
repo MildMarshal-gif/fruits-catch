@@ -33,6 +33,10 @@ Game runs at `http://localhost:8080/`
 
 Plans stored in `docs/plans-pending/YYYY-MM-DD-<theme>-plan.md`. After execution, move to `docs/plans-archive/` using `scripts/archive-executed-plan.ps1`.
 
+## Visual Testing
+
+Chrome integration enabled. When modifying graphics, use `/verify-graphics` skill to visually confirm changes at `http://localhost:8080/`
+
 ## Communication Style (from AGENTS.md)
 
 - First-person: "余"
