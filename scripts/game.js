@@ -256,7 +256,7 @@
       const ASSET_RETRY_MAX = 1;
       const ASSET_START_REQUIRED_RATIO = 0.0;
       // Bump this when image assets are replaced so browsers fetch fresh files.
-      const ASSET_VERSION = '2026-02-14-1';
+      const ASSET_VERSION = '2026-02-15-1';
 
       function withAssetVersion(path) {
         return `${path}?v=${encodeURIComponent(ASSET_VERSION)}`;
@@ -278,6 +278,8 @@
         fx_fruit_pop: withAssetVersion('assets/images/game-effects/fx_fruit_pop_v1.png'),
         background_day_sky: withAssetVersion('assets/images/backgrounds/background_day_sky_v1.png'),
         background_fever_sky: withAssetVersion('assets/images/backgrounds/background_fever_sky_v1.png'),
+        background_day_sky_mobile: withAssetVersion('assets/images/backgrounds/background_day_sky_mobile_v1.png'),
+        background_fever_sky_mobile: withAssetVersion('assets/images/backgrounds/background_fever_sky_mobile_v1.png'),
         cloud_01: withAssetVersion('assets/images/backgrounds/cloud_01_v1.png'),
         cloud_02: withAssetVersion('assets/images/backgrounds/cloud_02_v1.png'),
         cloud_03: withAssetVersion('assets/images/backgrounds/cloud_03_v1.png')
@@ -2646,8 +2648,15 @@
         const nightBlend = clamp((feverIntensity - 0.08) / 0.38, 0, 1);
         const activeTier = getActiveQualityTier();
         const staticKey = `${getGameWidth()}x${getGameHeight()}:${root.dataset.device || 'desktop'}:${activeTier}`;
-        const daySky = getImageOrNull('background_day_sky');
-        const feverSky = getImageOrNull('background_fever_sky');
+        const deviceType = root.dataset.device || 'desktop';
+        const isMobile = deviceType === 'mobile';
+
+        // デバイス別に画像キーを選択
+        const daySkyKey = isMobile ? 'background_day_sky_mobile' : 'background_day_sky';
+        const feverSkyKey = isMobile ? 'background_fever_sky_mobile' : 'background_fever_sky';
+
+        const daySky = getImageOrNull(daySkyKey);
+        const feverSky = getImageOrNull(feverSkyKey);
         const useSkyImages = !!(daySky && feverSky);
 
         if (useSkyImages) {
@@ -2657,17 +2666,16 @@
           const useFeverSky = feverState.phase !== 'idle' && feverIntensity > 0.001;
           const skyImage = useFeverSky ? feverSky : daySky;
 
-          // デスクトップ版はアスペクト比を保って上部を使用（下133px切り捨て）
-          const isDesktop = root.dataset.device === 'desktop';
+          const isDesktop = deviceType === 'desktop';
           if (isDesktop) {
-            // 元画像1536×1024の下160pxを切り捨て（スケール後133px相当）
+            // PC: 上部864pxを使用（元画像1536×1024の下160px切り捨て）
             ctx.drawImage(
               skyImage,
               0, 0, 1536, 864,  // ソース: 上部864pxを使用
               0, 0, getGameWidth(), getGameHeight()
             );
           } else {
-            // モバイル/タブレット: 引き伸ばし
+            // モバイル/タブレット: 全体を引き伸ばし
             ctx.drawImage(skyImage, 0, 0, getGameWidth(), getGameHeight());
           }
 
