@@ -256,7 +256,7 @@
       const ASSET_RETRY_MAX = 1;
       const ASSET_START_REQUIRED_RATIO = 0.0;
       // Bump this when image assets are replaced so browsers fetch fresh files.
-      const ASSET_VERSION = '2026-02-15-1';
+      const ASSET_VERSION = '2026-02-15-2';
 
       function withAssetVersion(path) {
         return `${path}?v=${encodeURIComponent(ASSET_VERSION)}`;
