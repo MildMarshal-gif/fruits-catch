@@ -33,7 +33,7 @@
           fruitScale: 1.05,
           basketScale: 0.61,
           pauseScale: 0.78,
-          cloudScale: 1.3,
+          cloudScale: 1.5,
           tapTarget: 44
         },
         tablet: {
@@ -260,7 +260,7 @@
       const ASSET_RETRY_MAX = 1;
       const ASSET_START_REQUIRED_RATIO = 0.0;
       // Bump this when image assets are replaced so browsers fetch fresh files.
-      const ASSET_VERSION = '2026-02-15-3';
+      const ASSET_VERSION = '2026-02-15-4';
 
       function withAssetVersion(path) {
         return `${path}?v=${encodeURIComponent(ASSET_VERSION)}`;
@@ -280,6 +280,9 @@
         fx_bug_hit: withAssetVersion('assets/images/game-effects/fx_bug_hit_v1.png'),
         fx_star_burst: withAssetVersion('assets/images/game-effects/fx_star_burst_v1.png'),
         fx_fruit_pop: withAssetVersion('assets/images/game-effects/fx_fruit_pop_v1.png'),
+        meteor_star_face1: withAssetVersion('assets/images/game-effects/meteor_star_face1_v1.png'),
+        meteor_star_face2: withAssetVersion('assets/images/game-effects/meteor_star_face2_v1.png'),
+        meteor_star_face3: withAssetVersion('assets/images/game-effects/meteor_star_face3_v1.png'),
         background_day_sky: withAssetVersion('assets/images/backgrounds/background_day_sky_v1.png'),
         background_fever_sky: withAssetVersion('assets/images/backgrounds/background_fever_sky_v1.png'),
         background_day_sky_mobile: withAssetVersion('assets/images/backgrounds/background_day_sky_mobile_v1.png'),
@@ -1040,7 +1043,13 @@
       function spawnShootingStar(intensity = 1) {
         const heading = rand(Math.PI * 0.80, Math.PI * 0.90);
         const speed = rand(620, 1060) * (reducedMotionQuery.matches ? 0.64 : 1) * (0.82 + intensity * 0.25);
-        const len = rand(76, 168);
+
+        const imageVariants = ['meteor_star_face1', 'meteor_star_face2', 'meteor_star_face3'];
+        const imageKey = imageVariants[Math.floor(Math.random() * imageVariants.length)];
+
+        const size = rand(32, 64);
+        const rotationSpeed = rand(Math.PI * 4, Math.PI * 8) * (Math.random() > 0.5 ? 1 : -1);
+
         shootingStars.push({
           x: rand(getGameWidth() * 0.08, getGameWidth() * 0.92),
           y: rand(-getGameHeight() * 0.2, getGameHeight() * 0.36),
@@ -1048,9 +1057,10 @@
           vy: Math.sin(heading) * speed,
           life: rand(0.42, 0.72),
           t: 0,
-          len,
-          width: rand(1.3, 2.9),
-          tone: Math.random() > 0.5 ? '#9fd8ff' : '#ffe39a'
+          imageKey,
+          size,
+          rotation: rand(0, Math.PI * 2),
+          rotationSpeed
         });
       }
 
@@ -1178,7 +1188,7 @@
         const meteorActive = fever || state.intensity > 0.06;
         if (meteorActive) {
           shootingStarSpawnTimer += dt;
-          const interval = reducedMotionQuery.matches ? 0.34 : (0.20 - state.intensity * 0.08);
+          const interval = reducedMotionQuery.matches ? 0.28 : (0.12 - state.intensity * 0.05);
           while (shootingStarSpawnTimer >= interval) {
             shootingStarSpawnTimer -= interval * rand(0.72, 1.08);
             spawnShootingStar(state.intensity);
@@ -1212,7 +1222,8 @@
           s.t += dt;
           s.x += s.vx * dt;
           s.y += s.vy * dt;
-          if (s.t > s.life || s.x + s.len < -40 || s.y - s.len > getGameHeight() + 40) {
+          s.rotation += s.rotationSpeed * dt;
+          if (s.t > s.life || s.x + s.size < -40 || s.y - s.size > getGameHeight() + 40) {
             shootingStars.splice(i, 1);
           }
         }
@@ -2560,24 +2571,30 @@
 
       function drawShootingStarsLayer() {
         if (!shootingStars.length) return;
+
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
+
         for (const s of shootingStars) {
           const lifeK = 1 - (s.t / s.life);
           if (lifeK <= 0) continue;
-          const tx = s.x - s.vx * 0.05;
-          const ty = s.y - s.vy * 0.05;
-          const trail = ctx.createLinearGradient(s.x, s.y, tx, ty);
-          trail.addColorStop(0, s.tone);
-          trail.addColorStop(1, 'rgba(255,255,255,0)');
+
+          const entry = imageCache.get(s.imageKey);
+          if (!entry || entry.state !== 'ready' || !entry.img) continue;
+
+          const raster = getSpriteRaster(s.imageKey, entry.img, s.size, s.size);
+          const drawSource = raster ? raster.canvas : entry.img;
+          const drawW = raster ? raster.drawW : s.size;
+          const drawH = raster ? raster.drawH : s.size;
+
+          ctx.save();
+          ctx.translate(s.x, s.y);
+          ctx.rotate(s.rotation);
           ctx.globalAlpha = lifeK * 0.92;
-          ctx.strokeStyle = trail;
-          ctx.lineWidth = s.width * (0.7 + lifeK * 0.7);
-          ctx.beginPath();
-          ctx.moveTo(s.x, s.y);
-          ctx.lineTo(tx, ty);
-          ctx.stroke();
+          ctx.drawImage(drawSource, -drawW * 0.5, -drawH * 0.5, drawW, drawH);
+          ctx.restore();
         }
+
         ctx.restore();
       }
 
