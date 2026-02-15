@@ -2472,10 +2472,10 @@
         const swayX = 18 * motionScale * motionMul;
         const swayY = 12 * motionScale * motionMul;
         const xBase = [0.22, 0.50, 0.78];
-        const yBase = [0.74, 0.70, 0.76];
+        const yBase = [0.35, 0.30, 0.38];
         const widthBase = [0.17, 0.15, 0.16];
         const fallbackHeightRatio = [0.31, 0.33, 0.30];
-        const alphaBase = [0.30, 0.28, 0.26];
+        const alphaBase = [0.60, 0.60, 0.60];
         const phase = [0.42, 2.14, 4.08];
         const pulseAmp = 0.04;
         const driftSpeedX = 0.58 * motionMul;
@@ -2483,7 +2483,7 @@
         const pulseSpeed = 1.02 * motionMul;
         const feverMix = clamp(feverIntensity, 0, 1);
         const feverBoost = feverMix * 0.10;
-        const cloudTone = `rgb(255,${Math.round(255 - feverMix * 2)},${Math.round(255 - feverMix * 13)})`;
+        const cloudTone = 'rgb(255, 255, 255)';
         const cloudImages = [
           getImageOrNull('cloud_01'),
           getImageOrNull('cloud_02'),
@@ -2497,7 +2497,7 @@
           const drawW = gameW * widthBase[i] * pulse;
           const rawX = gameW * xBase[i] + Math.sin(secNow * driftSpeedX + phase[i]) * swayX;
           const rawY = gameH * yBase[i] + Math.cos(secNow * driftSpeedY + phase[i]) * swayY;
-          const alpha = clamp(alphaBase[i] + feverBoost, 0.20, 0.45);
+          const alpha = feverMix > 0.001 ? 0 : alphaBase[i];
 
           let drawH = drawW * fallbackHeightRatio[i];
           let halfW = drawW * 0.60;
@@ -2512,21 +2512,16 @@
             halfH = drawH * 0.5;
           }
 
+          const HUD_SAFE_ZONE_TOP = 120;
           const x = clamp(rawX, halfW, Math.max(halfW, gameW - halfW));
-          const y = clamp(rawY, halfH, Math.max(halfH, gameH - halfH));
+          const minY = Math.max(halfH, HUD_SAFE_ZONE_TOP + halfH);
+          const maxY = Math.max(minY, gameH - halfH);
+          const y = clamp(rawY, minY, maxY);
           ctx.globalAlpha = alpha;
 
           if (canUseCloudSprites) {
             const img = cloudImages[i];
             ctx.drawImage(img, x - drawW * 0.5, y - drawH * 0.5, drawW, drawH);
-            if (feverMix > 0.001) {
-              ctx.save();
-              ctx.globalCompositeOperation = 'source-atop';
-              ctx.globalAlpha = alpha * feverMix * 0.18;
-              ctx.fillStyle = cloudTone;
-              ctx.fillRect(x - drawW * 0.5, y - drawH * 0.5, drawW, drawH);
-              ctx.restore();
-            }
           } else {
             ctx.fillStyle = cloudTone;
             ctx.beginPath();
@@ -2661,7 +2656,21 @@
           if ('imageSmoothingQuality' in ctx) ctx.imageSmoothingQuality = 'high';
           const useFeverSky = feverState.phase !== 'idle' && feverIntensity > 0.001;
           const skyImage = useFeverSky ? feverSky : daySky;
-          ctx.drawImage(skyImage, 0, 0, getGameWidth(), getGameHeight());
+
+          // デスクトップ版はアスペクト比を保って上部を使用（下133px切り捨て）
+          const isDesktop = root.dataset.device === 'desktop';
+          if (isDesktop) {
+            // 元画像1536×1024の下160pxを切り捨て（スケール後133px相当）
+            ctx.drawImage(
+              skyImage,
+              0, 0, 1536, 864,  // ソース: 上部864pxを使用
+              0, 0, getGameWidth(), getGameHeight()
+            );
+          } else {
+            // モバイル/タブレット: 引き伸ばし
+            ctx.drawImage(skyImage, 0, 0, getGameWidth(), getGameHeight());
+          }
+
           ctx.restore();
         } else {
           if (!staticBackgroundLayer || staticBackgroundLayerKey !== staticKey) {
