@@ -2,7 +2,8 @@
 name: opus-recommender
 description: |
   Analyze task complexity and recommend Opus 4.6 for truly complex tasks.
-  Use when detecting architecture design, security audit, complex debugging, or large-scale refactoring.
+  Use when user asks about architecture design, security audit, complex debugging, or large-scale refactoring.
+  Trigger keywords: アーキテクチャ, 設計, リファクタ, 構造変更, セキュリティ, 脆弱性, 監査, 原因不明, バグ調査, 非同期, 競合状態, デッドロック, メモリリーク, 大規模, 全体, プロジェクト全体, 前例のない, 新しい, 未知
   Be conservative - only recommend when Opus's superior reasoning is clearly needed.
 ---
 
@@ -150,6 +151,3 @@ Opus 4.6 vs Sonnet 4.5の性能差:
 - **トークン消費の警告**: 推奨する場合は必ず警告を含める
 - **複数条件の確認**: 必須キーワード2つ以上 + 大きな影響範囲 + 高難易度のすべてを満たす場合のみ
 - **除外キーワードの優先**: 除外キーワードがある場合は即座に推奨しない
-- **日本語ファースト**: 全ての出力は日本語
-- **絵文字制限**: ♡と☆のみ使用（最大5個/レスポンス、1個/段落）
-- **カジュアルトーン**: 「余」を一人称に、ですます調は使わない

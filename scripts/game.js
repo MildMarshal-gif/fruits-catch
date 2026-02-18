@@ -1041,6 +1041,7 @@
       }
 
       function spawnShootingStar(intensity = 1) {
+        console.log('[SPAWN] Creating shooting star with intensity:', intensity);
         const heading = rand(Math.PI * 0.80, Math.PI * 0.90);
         const speed = rand(620, 1060) * (reducedMotionQuery.matches ? 0.64 : 1) * (0.82 + intensity * 0.25);
 
@@ -1062,6 +1063,7 @@
           rotation: rand(0, Math.PI * 2),
           rotationSpeed
         });
+        console.log('[SPAWN] Added to array. imageKey:', imageKey, 'size:', size, 'total stars:', shootingStars.length);
       }
 
       function triggerFeverHitFeedback(x, y, color='#ffd670') {
@@ -1187,10 +1189,12 @@
 
         const meteorActive = fever || state.intensity > 0.06;
         if (meteorActive) {
+          console.log('[METEOR] Active - fever:', fever, 'intensity:', state.intensity, 'timer:', shootingStarSpawnTimer);
           shootingStarSpawnTimer += dt;
           const interval = reducedMotionQuery.matches ? 0.28 : (0.12 - state.intensity * 0.05);
           while (shootingStarSpawnTimer >= interval) {
             shootingStarSpawnTimer -= interval * rand(0.72, 1.08);
+            console.log('[METEOR] Spawning shooting star...');
             spawnShootingStar(state.intensity);
           }
         } else {
@@ -2572,15 +2576,23 @@
       function drawShootingStarsLayer() {
         if (!shootingStars.length) return;
 
+        console.log('[DRAW] Drawing', shootingStars.length, 'shooting stars');
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
 
+        let drawnCount = 0;
         for (const s of shootingStars) {
           const lifeK = 1 - (s.t / s.life);
-          if (lifeK <= 0) continue;
+          if (lifeK <= 0) {
+            console.log('[DRAW] Skipped (lifeK <= 0):', lifeK);
+            continue;
+          }
 
           const entry = imageCache.get(s.imageKey);
-          if (!entry || entry.state !== 'ready' || !entry.img) continue;
+          if (!entry || entry.state !== 'ready' || !entry.img) {
+            console.log('[DRAW] Image not ready. imageKey:', s.imageKey, 'entry:', entry ? entry.state : 'null');
+            continue;
+          }
 
           const raster = getSpriteRaster(s.imageKey, entry.img, s.size, s.size);
           const drawSource = raster ? raster.canvas : entry.img;
@@ -2593,8 +2605,10 @@
           ctx.globalAlpha = lifeK * 0.92;
           ctx.drawImage(drawSource, -drawW * 0.5, -drawH * 0.5, drawW, drawH);
           ctx.restore();
+          drawnCount++;
         }
 
+        console.log('[DRAW] Actually drawn:', drawnCount, 'stars');
         ctx.restore();
       }
 
