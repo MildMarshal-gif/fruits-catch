@@ -342,6 +342,7 @@
       const feverHitBursts = [];
       const feverStreams = [];
       const shootingStars = [];
+      const SHOOTING_STAR_MAX_ACTIVE = 4;
 
       let damageFlash = 0;
       let lifeFxTimeout = null;
@@ -1041,29 +1042,46 @@
       }
 
       function spawnShootingStar(intensity = 1) {
-        console.log('[SPAWN] Creating shooting star with intensity:', intensity);
-        const heading = rand(Math.PI * 0.80, Math.PI * 0.90);
-        const speed = rand(620, 1060) * (reducedMotionQuery.matches ? 0.64 : 1) * (0.82 + intensity * 0.25);
+        const speed = rand(155, 265) * (reducedMotionQuery.matches ? 0.64 : 1) * (0.82 + intensity * 0.25);
 
         const imageVariants = ['meteor_star_face1', 'meteor_star_face2', 'meteor_star_face3'];
         const imageKey = imageVariants[Math.floor(Math.random() * imageVariants.length)];
 
-        const size = rand(32, 64);
-        const rotationSpeed = rand(Math.PI * 4, Math.PI * 8) * (Math.random() > 0.5 ? 1 : -1);
+        const feverStarRadius = GRAPE_FRUIT
+          ? getFruitRadiusForMul(GRAPE_FRUIT.mul)
+          : clamp((fruitRadiusMin + fruitRadiusMax) * 0.44, 18, 36);
+        const size = feverStarRadius * 2;
+        const endScale = rand(0.40, 0.69);
+        const gameW = getGameWidth();
+        const gameH = getGameHeight();
+        const meteorFloorY = gameH * (2 / 3);
+        const startX = rand(gameW * 0.12, gameW * 0.88);
+        const startY = rand(gameH * 0.12, gameH * 0.28);
+        const targetX = clamp(startX + rand(-gameW * 0.05, gameW * 0.05), gameW * 0.10, gameW * 0.90);
+        const minTargetY = clamp(startY + gameH * 0.24, gameH * 0.56, meteorFloorY * 0.94);
+        const maxTargetY = meteorFloorY * 0.985;
+        const targetY = rand(minTargetY, Math.max(minTargetY, maxTargetY));
+        const dx = targetX - startX;
+        const dy = targetY - startY;
+        const len = Math.max(0.0001, Math.hypot(dx, dy));
+        const life = Math.max(0.78, (len / speed) * rand(0.90, 1.04));
+        const spinTurns = rand(0.18, 0.60);
+        const spinSign = Math.random() > 0.5 ? 1 : -1;
+        const rotationSpeed = ((Math.PI * 2) * spinTurns / life) * spinSign;
 
         shootingStars.push({
-          x: rand(getGameWidth() * 0.08, getGameWidth() * 0.92),
-          y: rand(-getGameHeight() * 0.2, getGameHeight() * 0.36),
-          vx: Math.cos(heading) * speed,
-          vy: Math.sin(heading) * speed,
-          life: rand(0.42, 0.72),
+          x: startX,
+          y: startY,
+          vx: (dx / len) * speed,
+          vy: (dy / len) * speed,
+          life,
           t: 0,
           imageKey,
           size,
+          endScale,
           rotation: rand(0, Math.PI * 2),
           rotationSpeed
         });
-        console.log('[SPAWN] Added to array. imageKey:', imageKey, 'size:', size, 'total stars:', shootingStars.length);
       }
 
       function triggerFeverHitFeedback(x, y, color='#ffd670') {
@@ -1189,13 +1207,14 @@
 
         const meteorActive = fever || state.intensity > 0.06;
         if (meteorActive) {
-          console.log('[METEOR] Active - fever:', fever, 'intensity:', state.intensity, 'timer:', shootingStarSpawnTimer);
           shootingStarSpawnTimer += dt;
-          const interval = reducedMotionQuery.matches ? 0.28 : (0.12 - state.intensity * 0.05);
-          while (shootingStarSpawnTimer >= interval) {
+          const interval = 0.75;
+          while (shootingStarSpawnTimer >= interval && shootingStars.length < SHOOTING_STAR_MAX_ACTIVE) {
             shootingStarSpawnTimer -= interval * rand(0.72, 1.08);
-            console.log('[METEOR] Spawning shooting star...');
             spawnShootingStar(state.intensity);
+          }
+          if (shootingStars.length >= SHOOTING_STAR_MAX_ACTIVE) {
+            shootingStarSpawnTimer = Math.min(shootingStarSpawnTimer, interval * 0.15);
           }
         } else {
           shootingStarSpawnTimer = 0;
@@ -1227,7 +1246,18 @@
           s.x += s.vx * dt;
           s.y += s.vy * dt;
           s.rotation += s.rotationSpeed * dt;
-          if (s.t > s.life || s.x + s.size < -40 || s.y - s.size > getGameHeight() + 40) {
+          const lifeT = clamp(s.t / s.life, 0, 1);
+          const depthScale = 1 - lifeT * (1 - s.endScale);
+          const currentHalf = (s.size * depthScale) * 0.5;
+          const meteorFloorY = getGameHeight() * (2 / 3);
+          if (
+            s.t > s.life ||
+            s.y + currentHalf >= meteorFloorY ||
+            s.x + s.size < -48 ||
+            s.x - s.size > getGameWidth() + 48 ||
+            s.y + s.size < -48 ||
+            s.y - s.size > meteorFloorY + 48
+          ) {
             shootingStars.splice(i, 1);
           }
         }
@@ -2576,28 +2606,25 @@
       function drawShootingStarsLayer() {
         if (!shootingStars.length) return;
 
-        console.log('[DRAW] Drawing', shootingStars.length, 'shooting stars');
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
 
-        let drawnCount = 0;
         for (const s of shootingStars) {
-          const lifeK = 1 - (s.t / s.life);
-          if (lifeK <= 0) {
-            console.log('[DRAW] Skipped (lifeK <= 0):', lifeK);
-            continue;
-          }
+          const lifeT = clamp(s.t / s.life, 0, 1);
+          const lifeK = 1 - lifeT;
+          if (lifeK <= 0) continue;
 
           const entry = imageCache.get(s.imageKey);
-          if (!entry || entry.state !== 'ready' || !entry.img) {
-            console.log('[DRAW] Image not ready. imageKey:', s.imageKey, 'entry:', entry ? entry.state : 'null');
-            continue;
-          }
+          if (!entry || entry.state !== 'ready' || !entry.img) continue;
 
-          const raster = getSpriteRaster(s.imageKey, entry.img, s.size, s.size);
+          const depthScale = 1 - lifeT * (1 - s.endScale);
+          const drawSize = Math.max(1, Math.round(s.size * depthScale));
+          const raster = getSpriteRaster(s.imageKey, entry.img, drawSize, drawSize);
           const drawSource = raster ? raster.canvas : entry.img;
-          const drawW = raster ? raster.drawW : s.size;
-          const drawH = raster ? raster.drawH : s.size;
+          const drawW = raster ? raster.drawW : drawSize;
+          const drawH = raster ? raster.drawH : drawSize;
+          const meteorFloorY = getGameHeight() * (2 / 3);
+          if (s.y + drawH * 0.5 >= meteorFloorY) continue;
 
           ctx.save();
           ctx.translate(s.x, s.y);
@@ -2605,10 +2632,8 @@
           ctx.globalAlpha = lifeK * 0.92;
           ctx.drawImage(drawSource, -drawW * 0.5, -drawH * 0.5, drawW, drawH);
           ctx.restore();
-          drawnCount++;
         }
 
-        console.log('[DRAW] Actually drawn:', drawnCount, 'stars');
         ctx.restore();
       }
 
@@ -2673,7 +2698,6 @@
         }
         ctx.restore();
 
-        drawShootingStarsLayer();
       }
 
       function drawBackground() {
@@ -2788,6 +2812,7 @@
           ctx.restore();
         }
 
+        drawShootingStarsLayer();
         drawParallaxCloudLayer(now, dynamicFx, feverIntensity * (1 - nightBlend * 0.45));
 
         if (!useSkyImages) {
