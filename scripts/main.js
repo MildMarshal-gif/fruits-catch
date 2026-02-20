@@ -1,6 +1,7 @@
 (() => {
   const FC = (window.FC = window.FC || {});
   const QUALITY_STORAGE_KEY = 'fc_quality_mode';
+  const SOUND_STORAGE_KEY = 'fc_sound_on';
   const QUALITY_QUERY_KEY = 'quality';
   const QUALITY_MODES = new Set(['auto', 'quality', 'balanced', 'performance']);
 
@@ -71,9 +72,32 @@
     }
   }
 
+  function readStoredSoundOn() {
+    try {
+      const raw = localStorage.getItem(SOUND_STORAGE_KEY);
+      if (raw == null) return null;
+      if (raw === '1' || raw === 'true') return true;
+      if (raw === '0' || raw === 'false') return false;
+      return null;
+    } catch {
+      return null;
+    }
+  }
+
+  function writeStoredSoundOn(soundOn) {
+    try {
+      localStorage.setItem(SOUND_STORAGE_KEY, soundOn ? '1' : '0');
+    } catch {
+      // ignore storage failures
+    }
+  }
+
   const initialQueryMode = readQueryQualityMode();
   let currentQualityMode = initialQueryMode || readStoredQualityMode() || 'balanced';
+  let currentSoundOn = readStoredSoundOn();
+  if (currentSoundOn == null) currentSoundOn = true;
   const qualityModeListeners = new Set();
+  const soundListeners = new Set();
 
   function applyQualityModeToDom() {
     const root = FC.media?.root || document.documentElement;
@@ -84,6 +108,12 @@
   function notifyQualityMode(nextMode) {
     for (const listener of qualityModeListeners) {
       try { listener(nextMode); } catch {}
+    }
+  }
+
+  function notifySoundOn(nextSoundOn) {
+    for (const listener of soundListeners) {
+      try { listener(nextSoundOn); } catch {}
     }
   }
 
@@ -106,6 +136,22 @@
       if (typeof listener !== 'function') return () => {};
       qualityModeListeners.add(listener);
       return () => qualityModeListeners.delete(listener);
+    },
+    getSoundOn() {
+      return currentSoundOn;
+    },
+    setSoundOn(nextSoundOn, options = {}) {
+      currentSoundOn = !!nextSoundOn;
+      if (options.persist !== false) {
+        writeStoredSoundOn(currentSoundOn);
+      }
+      notifySoundOn(currentSoundOn);
+      return currentSoundOn;
+    },
+    subscribeSound(listener) {
+      if (typeof listener !== 'function') return () => {};
+      soundListeners.add(listener);
+      return () => soundListeners.delete(listener);
     }
   };
 
@@ -137,7 +183,7 @@
     misses: 0,
     fever: false,
     feverEnd: 0,
-    soundOn: true
+    soundOn: currentSoundOn
   };
 
   applyQualityModeToDom();

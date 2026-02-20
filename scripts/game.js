@@ -369,12 +369,22 @@
         }
       });
 
-      // Audio (WebAudio synth BGM: normal & fever)
+      // Audio (SFX + BGM engine)
       const audioCtx = (() => {
         try { return new (window.AudioContext || window.webkitAudioContext)(); }
         catch { return null; }
       })();
-      let soundOn = true;
+      const SOUND_CROSSFADE_MS = 180;
+      let soundOn = FC.settings?.getSoundOn?.();
+      if (typeof soundOn !== 'boolean') soundOn = true;
+      const audioEngine = typeof FC.createAudioEngine === 'function'
+        ? FC.createAudioEngine({
+            audioContext: audioCtx,
+            defaultCrossfadeMs: SOUND_CROSSFADE_MS,
+            masterVolume: 0.3,
+            logger: console
+          })
+        : null;
 
       ui.wireControls({
         startBtn,
@@ -388,11 +398,20 @@
         onRestart: () => restartGame(),
         isSoundOn: () => soundOn,
         onToggleSound: async (nextSoundOn) => {
-          soundOn = nextSoundOn;
+          soundOn = !!nextSoundOn;
+          FC.settings?.setSoundOn?.(soundOn);
           if (audioCtx && soundOn) {
             try { await audioCtx.resume(); } catch {}
           }
-          setMusicEnabled(soundOn);
+          if (audioEngine) {
+            audioEngine.setEnabled(soundOn);
+            if (soundOn && running && !paused && !gameOver) {
+              await audioEngine.startSession(fever ? 'fever' : 'normal');
+            } else if (!soundOn) {
+              audioEngine.pause();
+            }
+          }
+          syncSharedState();
         }
       });
 
@@ -471,172 +490,6 @@
             type:'square',
             gainPeak:type === 'star' ? 0.075 : 0.05
           });
-        }
-      }
-
-      // BGM sequencer
-      const music = (() => {
-        if (!audioCtx) return null;
-
-        const master = audioCtx.createGain();
-        master.gain.value = 0.2;
-        master.connect(audioCtx.destination);
-
-        const normalGain = audioCtx.createGain();
-        const feverGain = audioCtx.createGain();
-        normalGain.gain.value = 0.0;
-        feverGain.gain.value = 0.0;
-        normalGain.connect(master);
-        feverGain.connect(master);
-
-        let enabled = true;
-        let mode = 'normal';
-        let step = 0;
-        let timer = null;
-        let nextNoteTime = 0;
-
-        const lookAhead = 0.13;
-        const interval = 22;
-        const bpmNormal = 124;
-        const bpmFever = 152;
-
-        const N = {
-          C4:261.63, D4:293.66, E4:329.63, F4:349.23, G4:392.00, A4:440.00, B4:493.88,
-          C5:523.25, D5:587.33, E5:659.25, F5:698.46, G5:783.99, A5:880.00, B5:987.77,
-          C6:1046.5
-        };
-
-        const normalLead = [
-          N.E5,N.G5,N.B5,N.G5, N.D5,N.F5,N.A5,N.F5,
-          N.C5,N.E5,N.G5,N.E5, N.D5,N.F5,N.A5,N.G5
-        ];
-        const normalBass = [
-          N.C4,0,N.C4,0, N.F4,0,N.F4,0,
-          N.A4,0,N.A4,0, N.G4,0,N.G4,0
-        ];
-        const normalChime = [
-          N.E6,0,0,N.B5, 0,N.A5,0,0,
-          N.G5,0,0,N.E5, 0,N.D5,0,0
-        ];
-
-        const feverLead = [
-          N.A5,N.C6,N.B5,N.G5, N.E5,N.G5,N.A5,N.B5,
-          N.C6,N.B5,N.G5,N.E5, N.G5,N.A5,N.C6,N.B5
-        ];
-        const feverBass = [
-          N.A4,0,N.A4,0, N.G4,0,N.G4,0,
-          N.E4,0,N.E4,0, N.F4,0,N.F4,0
-        ];
-        const feverChime = [
-          N.C6,0,N.B5,0, N.A5,0,N.G5,0,
-          N.E5,0,N.G5,0, N.A5,0,N.B5,0
-        ];
-
-        function playPatternNote(time, freq, duration, gainNode, options = {}) {
-          if (!freq) return;
-          oneShotVoice({
-            time,
-            freq,
-            duration,
-            destination:gainNode,
-            type:options.type || 'triangle',
-            gainPeak:options.gainPeak ?? 0.12,
-            detune:options.detune ?? 0,
-            slideTo:options.slideTo ?? null
-          });
-        }
-
-        function scheduler() {
-          if (!enabled) return;
-          const now = audioCtx.currentTime;
-
-          while (nextNoteTime < now + lookAhead) {
-            const isFever = mode === 'fever';
-            const bpm = isFever ? bpmFever : bpmNormal;
-            const stepDur = (60 / bpm) / 4;
-            const lane = isFever ? feverGain : normalGain;
-            const lead = isFever ? feverLead : normalLead;
-            const bass = isFever ? feverBass : normalBass;
-            const chime = isFever ? feverChime : normalChime;
-            const idx = step % 16;
-
-            playPatternNote(nextNoteTime, lead[idx], stepDur * 0.92, lane, {
-              type:isFever ? 'sawtooth' : 'triangle',
-              gainPeak:isFever ? 0.12 : 0.10,
-              slideTo:isFever ? lead[idx] * 1.02 : null
-            });
-
-            playPatternNote(nextNoteTime, bass[idx], stepDur * 0.98, lane, {
-              type:'sine',
-              gainPeak:isFever ? 0.10 : 0.085,
-              detune:-3
-            });
-
-            if ((step % 2) === 0) {
-              playPatternNote(nextNoteTime + 0.004, chime[idx], stepDur * 0.55, lane, {
-                type:'square',
-                gainPeak:isFever ? 0.052 : 0.04,
-                detune:8
-              });
-            }
-
-            if ((step % 4) === 0) {
-              playPatternNote(nextNoteTime, isFever ? 146 : 128, stepDur * 0.42, lane, {
-                type:'sine',
-                gainPeak:isFever ? 0.072 : 0.05
-              });
-            }
-
-            nextNoteTime += stepDur;
-            step++;
-          }
-        }
-
-        function start() {
-          if (timer) return;
-          nextNoteTime = audioCtx.currentTime + 0.06;
-          timer = setInterval(scheduler, interval);
-        }
-
-        function stop() {
-          if (!timer) return;
-          clearInterval(timer);
-          timer = null;
-          normalGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.03);
-          feverGain.gain.setTargetAtTime(0.0, audioCtx.currentTime, 0.03);
-        }
-
-        function setEnabled(v) {
-          enabled = v;
-          if (!enabled) {
-            stop();
-            return;
-          }
-          start();
-          setMode(mode);
-        }
-
-        function setMode(newMode) {
-          mode = newMode;
-          const t = audioCtx.currentTime;
-          if (mode === 'fever') {
-            normalGain.gain.setTargetAtTime(0.0, t, 0.05);
-            feverGain.gain.setTargetAtTime(1.0, t, 0.05);
-          } else {
-            feverGain.gain.setTargetAtTime(0.0, t, 0.05);
-            normalGain.gain.setTargetAtTime(1.0, t, 0.05);
-          }
-        }
-
-        return { start, stop, setEnabled, setMode };
-      })();
-
-      function setMusicEnabled(on) {
-        if (!music) return;
-        if (!on) music.setEnabled(false);
-        else {
-          music.setEnabled(true);
-          music.setMode(fever ? 'fever' : 'normal');
         }
       }
 
@@ -1507,9 +1360,9 @@
         resetPlayMetrics();
         perfEngine?.reset?.();
 
-        if (music && soundOn) {
-          music.setEnabled(true);
-          music.setMode('normal');
+        if (audioEngine) {
+          audioEngine.pause();
+          audioEngine.setMode('normal', SOUND_CROSSFADE_MS);
         }
       }
 
@@ -1545,7 +1398,10 @@
         updatePausePanel();
 
         if (audioCtx) audioCtx.resume?.();
-        setMusicEnabled(soundOn);
+        if (audioEngine) {
+          audioEngine.setEnabled(soundOn);
+          await audioEngine.startSession('normal');
+        }
       }
 
       async function restartGame() {
@@ -1563,7 +1419,10 @@
         updatePausePanel();
 
         if (audioCtx) audioCtx.resume?.();
-        setMusicEnabled(soundOn);
+        if (audioEngine) {
+          audioEngine.setEnabled(soundOn);
+          await audioEngine.startSession('normal');
+        }
       }
 
       function setPaused(nextPaused) {
@@ -1573,9 +1432,12 @@
         pauseBtn.disabled = paused;
         updatePausePanel();
 
-        if (music) {
-          if (paused) music.setEnabled(false);
-          else setMusicEnabled(soundOn);
+        if (audioEngine) {
+          if (paused) {
+            audioEngine.pause();
+          } else if (soundOn) {
+            audioEngine.resume();
+          }
         }
       }
 
@@ -1599,7 +1461,7 @@
         }
         updatePausePanel();
 
-        if (music) music.setEnabled(false);
+        if (audioEngine) audioEngine.endGame();
 
         ui.showGameOverOverlay({
           overlay,
@@ -3332,7 +3194,7 @@
             feverTimeEl.textContent = `${remain.toFixed(1)}s`;
             if (remain <= 0) {
               fever = false;
-              if (music && soundOn) music.setMode('normal');
+              if (audioEngine) audioEngine.setMode('normal', SOUND_CROSSFADE_MS);
               setFeverPhase('exit', totalElapsed);
               pop(getGameWidth()*0.5, getGameHeight()*0.22, '#ffffff', 24);
             }
@@ -3363,7 +3225,7 @@
                 triggerFeverHitFeedback(o.x, o.y, '#ffd670');
 
                 sfx('star');
-                if (music && soundOn) music.setMode('fever');
+                if (audioEngine) audioEngine.setMode('fever', SOUND_CROSSFADE_MS);
                 continue;
               }
 
@@ -3441,6 +3303,35 @@
       }
 
       // Init
+      function shouldResumeBgmOnForeground() {
+        return running && !paused && !gameOver && soundOn;
+      }
+
+      function performForegroundBgmRecovery() {
+        if (!audioEngine) return;
+        if (!shouldResumeBgmOnForeground()) return;
+        audioEngine.pause();
+        audioEngine.resume();
+      }
+
+      function handleVisibilityChange() {
+        if (!audioEngine) return;
+        if (document.hidden) {
+          audioEngine.pause();
+          return;
+        }
+        performForegroundBgmRecovery();
+      }
+
+      function handlePageHide() {
+        if (!audioEngine) return;
+        audioEngine.pause();
+      }
+
+      function handlePageShow() {
+        performForegroundBgmRecovery();
+      }
+
       updateQualityDataAttrs();
       applyResponsiveProfile();
       syncCanvasBodyFontTokens();
@@ -3460,16 +3351,25 @@
       resetOverlayTextToStart();
       // Preload in background; startGame/restartGame still applies timeout guard.
       void loadGameAssets();
+      if (audioEngine) {
+        audioEngine.setEnabled(soundOn);
+        void audioEngine.prime();
+      }
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+      window.addEventListener('pagehide', handlePageHide);
+      window.addEventListener('pageshow', handlePageShow);
       requestAnimationFrame(frame);
 
       window.addEventListener('beforeunload', () => {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+        window.removeEventListener('pagehide', handlePageHide);
+        window.removeEventListener('pageshow', handlePageShow);
         detachQualityListener();
         inputEngine?.destroy?.();
         rendererEngine?.destroy?.();
+        audioEngine?.dispose?.();
       });
 
-      // Start with overlay (music off until start)
-      if (music) music.setEnabled(false);
       syncSharedState();
       };
 
