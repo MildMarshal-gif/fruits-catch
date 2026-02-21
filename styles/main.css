@@ -925,12 +925,11 @@
         0 0 0 2px rgba(255,104,152,.46) inset,
         0 0 24px rgba(255,98,156,.26),
         var(--shadow-strong);
-      filter:saturate(.88) brightness(.93);
     }
 
     .wrap.life-critical::after{
-      opacity:.92;
-      animation:lifeCriticalScreenPulse 1.08s ease-in-out infinite;
+      opacity:0;
+      animation:lifeCriticalScreenPulse 2.8s ease-in-out infinite;
     }
 
     .wrap.life-critical .stat-card[aria-label="ライフ"]{
@@ -968,13 +967,25 @@
     }
 
     @keyframes lifeCriticalScreenPulse{
-      0%,100%{
-        opacity:.82;
-        filter:saturate(.94);
+      0%, 36%, 100%{
+        opacity:0;
+        filter:saturate(1);
       }
-      50%{
-        opacity:1;
-        filter:saturate(1.06);
+      8%{
+        opacity:.68;
+        filter:saturate(1.04);
+      }
+      15%{
+        opacity:.12;
+        filter:saturate(1.01);
+      }
+      22%{
+        opacity:.52;
+        filter:saturate(1.03);
+      }
+      30%{
+        opacity:0;
+        filter:saturate(1);
       }
     }
 
@@ -1048,11 +1059,7 @@
 
       .wrap.life-critical::after{
         animation-name:lifeCriticalScreenPulse;
-        animation-duration:1.62s;
-        opacity:.68;
-      }
-
-      .wrap.life-critical{
-        filter:saturate(.93) brightness(.96);
+        animation-duration:3.8s;
+        opacity:0;
       }
     }

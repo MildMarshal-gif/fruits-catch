@@ -3559,8 +3559,11 @@
       function drawCriticalLifeOverlay(now) {
         if (!running || paused || gameOver) return;
         if (getLivesLeft() !== 1) return;
-        const pulse = 0.5 + 0.5 * Math.sin(now * (reducedMotionQuery.matches ? 0.004 : 0.009));
-        const alpha = (reducedMotionQuery.matches ? 0.05 : 0.08) + pulse * (reducedMotionQuery.matches ? 0.025 : 0.055);
+        const beatHz = reducedMotionQuery.matches ? 0.28 : 0.36;
+        const phase = now * 0.001 * Math.PI * 2 * beatHz;
+        const beat = Math.pow(Math.max(0, Math.sin(phase)), reducedMotionQuery.matches ? 3 : 4.5);
+        if (beat <= 0.002) return;
+        const alpha = beat * (reducedMotionQuery.matches ? 0.11 : 0.18);
         ctx.save();
         const vignette = ctx.createRadialGradient(
           getGameWidth() * 0.5,
@@ -3571,7 +3574,7 @@
           getGameWidth() * 0.82
         );
         vignette.addColorStop(0, 'rgba(255,96,160,0)');
-        vignette.addColorStop(0.72, `rgba(255,88,150,${(alpha * 0.45).toFixed(3)})`);
+        vignette.addColorStop(0.72, `rgba(255,88,150,${(alpha * 0.38).toFixed(3)})`);
         vignette.addColorStop(1, `rgba(214,26,90,${alpha.toFixed(3)})`);
         ctx.fillStyle = vignette;
         ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
