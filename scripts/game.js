@@ -377,6 +377,13 @@
         catch { return null; }
       })();
       const SOUND_CROSSFADE_MS = 180;
+      const BGM_MASTER_VOLUME = 0.1955;
+      const SFX_PRESENCE_GAIN = 1.25;
+      const CATCH_PRESENCE_GAIN = 1.2;
+      const debugState = FC.debug || (FC.debug = {});
+      if (!Object.prototype.hasOwnProperty.call(debugState, 'lastFrameError')) {
+        debugState.lastFrameError = null;
+      }
       let soundOn = FC.settings?.getSoundOn?.();
       if (typeof soundOn !== 'boolean') soundOn = true;
       let bgmOn = FC.settings?.getBgmOn?.();
@@ -388,7 +395,7 @@
         ? FC.createAudioEngine({
             audioContext: audioCtx,
             defaultCrossfadeMs: SOUND_CROSSFADE_MS,
-            masterVolume: 0.3,
+            masterVolume: BGM_MASTER_VOLUME,
             logger: console
           })
         : null;
@@ -404,6 +411,15 @@
       async function ensureAudioContextResumed() {
         if (!audioCtx) return;
         try { await audioCtx.resume?.(); } catch {}
+      }
+
+      function safeAudioTransition(nextMode) {
+        if (!audioEngine) return;
+        try {
+          audioEngine.setMode(nextMode, SOUND_CROSSFADE_MS);
+        } catch (error) {
+          console.warn('[audio] setMode transition failed', { nextMode, error });
+        }
       }
 
       ui.wireControls({
@@ -458,6 +474,306 @@
         }
       });
 
+      // DEV-BEGIN: deterministic SFX profile exploration (easy to remove as one block).
+      const DEV_SFX_PROFILE_QUERY_KEY = 'sfxProfile';
+      const DEV_SFX_PROFILE_DEFAULT = 'bright-pop';
+      const SFX_PROFILE_PRESETS = Object.freeze({
+        'bright-pop': {
+          mix: {
+            send: 0.28,
+            wet: 0.74,
+            delayA: 0.047,
+            delayB: 0.081,
+            feedbackA: 0.2,
+            feedbackB: 0.17,
+            panA: -0.32,
+            panB: 0.32,
+            wetLowpassHz: 4600,
+            compThreshold: -24,
+            compRatio: 3.3,
+            lowShelfGain: 1.4,
+            highShelfGain: 2.1,
+            output: 0.9
+          },
+          events: {
+            ui: {
+              outGain: 0.18,
+              voices: [
+                { at: 0.0, freq: 3120, duration: 0.018, type: 'square', gainPeak: 0.032 },
+                { at: 0.0, freq: 1980, duration: 0.05, type: 'triangle', gainPeak: 0.07, slideTo: 1640 },
+                { at: 0.009, freq: 2440, duration: 0.03, type: 'sine', gainPeak: 0.028 }
+              ]
+            },
+            catch: {
+              outGain: 0.19,
+              voices: [
+                { at: 0.0, freq: 840, duration: 0.082, type: 'sine', gainPeak: 0.056, slideTo: 1220 },
+                { at: 0.008, freq: 980, duration: 0.12, type: 'triangle', gainPeak: 0.052, slideTo: 1480 },
+                { at: 0.018, freq: 1680, duration: 0.2, type: 'sine', gainPeak: 0.03, detune: -8, slideTo: 2140 },
+                { at: 0.022, freq: 1680, duration: 0.22, type: 'sine', gainPeak: 0.03, detune: 8, slideTo: 2200 },
+                { at: 0.034, freq: 2560, duration: 0.17, type: 'sine', gainPeak: 0.018, slideTo: 2920 }
+              ]
+            },
+            star: {
+              outGain: 0.26,
+              voices: [
+                { at: 0.0, freq: 880, duration: 0.115, type: 'triangle', gainPeak: 0.115 },
+                { at: 0.024, freq: 1174, duration: 0.122, type: 'triangle', gainPeak: 0.12 },
+                { at: 0.05, freq: 1568, duration: 0.13, type: 'triangle', gainPeak: 0.125 },
+                { at: 0.076, freq: 2092, duration: 0.15, type: 'triangle', gainPeak: 0.132 },
+                { at: 0.018, freq: 2350, duration: 0.11, type: 'square', gainPeak: 0.058 },
+                { at: 0.12, freq: 2640, duration: 0.2, type: 'sine', gainPeak: 0.034 },
+                { at: 0.138, freq: 1980, duration: 0.22, type: 'sine', gainPeak: 0.03 }
+              ]
+            },
+            damage: {
+              outGain: 0.24,
+              voices: [
+                { at: 0.0, freq: 310, duration: 0.115, type: 'triangle', gainPeak: 0.11, slideTo: 208 },
+                { at: 0.028, freq: 246, duration: 0.12, type: 'triangle', gainPeak: 0.12, slideTo: 164 },
+                { at: 0.056, freq: 192, duration: 0.126, type: 'triangle', gainPeak: 0.12, slideTo: 130 },
+                { at: 0.012, freq: 152, duration: 0.19, type: 'sawtooth', gainPeak: 0.052, slideTo: 92 },
+                { at: 0.064, freq: 118, duration: 0.24, type: 'sine', gainPeak: 0.043 }
+              ]
+            }
+          }
+        },
+        'arcade-chip': {
+          mix: {
+            send: 0.14,
+            wet: 0.5,
+            delayA: 0.031,
+            delayB: 0.055,
+            feedbackA: 0.12,
+            feedbackB: 0.1,
+            panA: -0.25,
+            panB: 0.25,
+            wetLowpassHz: 3600,
+            compThreshold: -20,
+            compRatio: 2.8,
+            lowShelfGain: 0.9,
+            highShelfGain: 1.4,
+            output: 0.84
+          },
+          events: {
+            ui: {
+              outGain: 0.16,
+              voices: [
+                { at: 0.0, freq: 2480, duration: 0.015, type: 'square', gainPeak: 0.03 },
+                { at: 0.007, freq: 1860, duration: 0.03, type: 'square', gainPeak: 0.048, slideTo: 1490 }
+              ]
+            },
+            catch: {
+              outGain: 0.18,
+              voices: [
+                { at: 0.0, freq: 960, duration: 0.065, type: 'square', gainPeak: 0.052, slideTo: 1320 },
+                { at: 0.01, freq: 1220, duration: 0.088, type: 'square', gainPeak: 0.048, slideTo: 1640 },
+                { at: 0.018, freq: 1540, duration: 0.16, type: 'triangle', gainPeak: 0.036, detune: -6, slideTo: 2060 },
+                { at: 0.022, freq: 1540, duration: 0.17, type: 'triangle', gainPeak: 0.036, detune: 6, slideTo: 2120 },
+                { at: 0.03, freq: 2380, duration: 0.14, type: 'sine', gainPeak: 0.018, slideTo: 2820 }
+              ]
+            },
+            star: {
+              outGain: 0.25,
+              voices: [
+                { at: 0.0, freq: 880, duration: 0.08, type: 'square', gainPeak: 0.088 },
+                { at: 0.02, freq: 1320, duration: 0.088, type: 'square', gainPeak: 0.094 },
+                { at: 0.04, freq: 1760, duration: 0.096, type: 'square', gainPeak: 0.1 },
+                { at: 0.06, freq: 2640, duration: 0.11, type: 'square', gainPeak: 0.106 },
+                { at: 0.085, freq: 1980, duration: 0.14, type: 'triangle', gainPeak: 0.056 }
+              ]
+            },
+            damage: {
+              outGain: 0.23,
+              voices: [
+                { at: 0.0, freq: 270, duration: 0.1, type: 'square', gainPeak: 0.086, slideTo: 184 },
+                { at: 0.024, freq: 204, duration: 0.108, type: 'square', gainPeak: 0.09, slideTo: 140 },
+                { at: 0.048, freq: 154, duration: 0.115, type: 'square', gainPeak: 0.096, slideTo: 106 },
+                { at: 0.0, freq: 96, duration: 0.15, type: 'triangle', gainPeak: 0.042 },
+                { at: 0.06, freq: 74, duration: 0.18, type: 'sine', gainPeak: 0.038 }
+              ]
+            }
+          }
+        },
+        'soft-toy': {
+          mix: {
+            send: 0.36,
+            wet: 0.82,
+            delayA: 0.063,
+            delayB: 0.097,
+            feedbackA: 0.24,
+            feedbackB: 0.2,
+            panA: -0.28,
+            panB: 0.28,
+            wetLowpassHz: 2900,
+            compThreshold: -26,
+            compRatio: 3.8,
+            lowShelfGain: 2.4,
+            highShelfGain: 0.7,
+            output: 0.88
+          },
+          events: {
+            ui: {
+              outGain: 0.16,
+              voices: [
+                { at: 0.0, freq: 1620, duration: 0.028, type: 'sine', gainPeak: 0.026 },
+                { at: 0.005, freq: 1240, duration: 0.052, type: 'triangle', gainPeak: 0.05, slideTo: 980 }
+              ]
+            },
+            catch: {
+              outGain: 0.18,
+              voices: [
+                { at: 0.0, freq: 760, duration: 0.11, type: 'sine', gainPeak: 0.05, slideTo: 1080 },
+                { at: 0.012, freq: 980, duration: 0.14, type: 'triangle', gainPeak: 0.046, slideTo: 1360 },
+                { at: 0.022, freq: 1460, duration: 0.24, type: 'sine', gainPeak: 0.032, detune: -7, slideTo: 1900 },
+                { at: 0.026, freq: 1460, duration: 0.26, type: 'sine', gainPeak: 0.032, detune: 7, slideTo: 1960 },
+                { at: 0.042, freq: 2240, duration: 0.2, type: 'sine', gainPeak: 0.02, slideTo: 2660 }
+              ]
+            },
+            star: {
+              outGain: 0.23,
+              voices: [
+                { at: 0.0, freq: 660, duration: 0.12, type: 'triangle', gainPeak: 0.09 },
+                { at: 0.028, freq: 880, duration: 0.13, type: 'triangle', gainPeak: 0.096 },
+                { at: 0.056, freq: 1174, duration: 0.145, type: 'triangle', gainPeak: 0.1 },
+                { at: 0.088, freq: 1568, duration: 0.165, type: 'sine', gainPeak: 0.085 },
+                { at: 0.12, freq: 1980, duration: 0.22, type: 'sine', gainPeak: 0.03 }
+              ]
+            },
+            damage: {
+              outGain: 0.22,
+              voices: [
+                { at: 0.0, freq: 220, duration: 0.12, type: 'triangle', gainPeak: 0.092, slideTo: 150 },
+                { at: 0.03, freq: 176, duration: 0.126, type: 'triangle', gainPeak: 0.094, slideTo: 118 },
+                { at: 0.06, freq: 138, duration: 0.136, type: 'triangle', gainPeak: 0.096, slideTo: 96 },
+                { at: 0.012, freq: 104, duration: 0.21, type: 'sine', gainPeak: 0.038 },
+                { at: 0.08, freq: 82, duration: 0.24, type: 'sine', gainPeak: 0.036 }
+              ]
+            }
+          }
+        }
+      });
+
+      function normalizeSfxProfileId(value) {
+        if (typeof value !== 'string') return null;
+        const normalized = value.trim().toLowerCase().replace(/[_\s]+/g, '-');
+        return normalized || null;
+      }
+
+      function readDevSfxProfileIdFromQuery() {
+        try {
+          const url = new URL(window.location.href);
+          return normalizeSfxProfileId(url.searchParams.get(DEV_SFX_PROFILE_QUERY_KEY));
+        } catch {
+          return null;
+        }
+      }
+
+      function resolveActiveSfxProfile() {
+        const requested = readDevSfxProfileIdFromQuery();
+        const defaultId = normalizeSfxProfileId(DEV_SFX_PROFILE_DEFAULT) || 'bright-pop';
+        const safeDefault = SFX_PROFILE_PRESETS[defaultId] ? defaultId : 'bright-pop';
+        if (requested && SFX_PROFILE_PRESETS[requested]) {
+          return { id: requested, preset: SFX_PROFILE_PRESETS[requested], requested };
+        }
+        if (requested && !SFX_PROFILE_PRESETS[requested]) {
+          console.warn('[audio][dev] unknown sfxProfile; fallback to default', {
+            requested,
+            fallback: safeDefault
+          });
+        }
+        return { id: safeDefault, preset: SFX_PROFILE_PRESETS[safeDefault], requested };
+      }
+
+      const activeSfxProfile = resolveActiveSfxProfile();
+      debugState.activeSfxProfile = activeSfxProfile.id;
+      // DEV-END: deterministic SFX profile exploration.
+
+      // SFX bus: dry/wet blend -> compressor -> tone shaping.
+      // Parameters are selected from the active deterministic SFX profile.
+      const sfxMixer = (() => {
+        if (!audioCtx) return null;
+        try {
+          const mix = activeSfxProfile?.preset?.mix || {};
+          const input = audioCtx.createGain();
+          const dryGain = audioCtx.createGain();
+          const sendGain = audioCtx.createGain();
+          const wetGain = audioCtx.createGain();
+          const delayA = audioCtx.createDelay(0.5);
+          const delayB = audioCtx.createDelay(0.5);
+          const feedbackA = audioCtx.createGain();
+          const feedbackB = audioCtx.createGain();
+          const panA = audioCtx.createStereoPanner();
+          const panB = audioCtx.createStereoPanner();
+          const wetLowpass = audioCtx.createBiquadFilter();
+          const comp = audioCtx.createDynamicsCompressor();
+          const lowShelf = audioCtx.createBiquadFilter();
+          const highShelf = audioCtx.createBiquadFilter();
+          const output = audioCtx.createGain();
+
+          dryGain.gain.value = clamp(Number(mix.dry) || 1.0, 0.2, 2.0);
+          sendGain.gain.value = clamp(Number(mix.send) || 0.26, 0, 0.8);
+          wetGain.gain.value = clamp(Number(mix.wet) || 0.7, 0, 1.2);
+          delayA.delayTime.value = clamp(Number(mix.delayA) || 0.052, 0.005, 0.3);
+          delayB.delayTime.value = clamp(Number(mix.delayB) || 0.089, 0.005, 0.3);
+          feedbackA.gain.value = clamp(Number(mix.feedbackA) || 0.21, 0, 0.6);
+          feedbackB.gain.value = clamp(Number(mix.feedbackB) || 0.19, 0, 0.6);
+          panA.pan.value = clamp(Number(mix.panA) || -0.35, -1, 1);
+          panB.pan.value = clamp(Number(mix.panB) || 0.35, -1, 1);
+          wetLowpass.type = 'lowpass';
+          wetLowpass.frequency.value = clamp(Number(mix.wetLowpassHz) || 3600, 600, 12000);
+          wetLowpass.Q.value = clamp(Number(mix.wetLowpassQ) || 0.7, 0.1, 8);
+
+          comp.threshold.value = clamp(Number(mix.compThreshold) || -24, -80, 0);
+          comp.knee.value = clamp(Number(mix.compKnee) || 18, 0, 40);
+          comp.ratio.value = clamp(Number(mix.compRatio) || 3.2, 1, 20);
+          comp.attack.value = clamp(Number(mix.compAttack) || 0.003, 0, 1);
+          comp.release.value = clamp(Number(mix.compRelease) || 0.09, 0, 1);
+
+          lowShelf.type = 'lowshelf';
+          lowShelf.frequency.value = clamp(Number(mix.lowShelfHz) || 220, 60, 1000);
+          lowShelf.gain.value = clamp(Number(mix.lowShelfGain) || 1.6, -12, 12);
+
+          highShelf.type = 'highshelf';
+          highShelf.frequency.value = clamp(Number(mix.highShelfHz) || 3200, 800, 12000);
+          highShelf.gain.value = clamp(Number(mix.highShelfGain) || 1.2, -12, 12);
+
+          output.gain.value = clamp(Number(mix.output) || 0.95, 0, 1);
+
+          input.connect(dryGain);
+          input.connect(sendGain);
+          dryGain.connect(comp);
+
+          sendGain.connect(delayA);
+          sendGain.connect(delayB);
+          delayA.connect(feedbackA);
+          feedbackA.connect(delayA);
+          delayB.connect(feedbackB);
+          feedbackB.connect(delayB);
+          delayA.connect(panA);
+          delayB.connect(panB);
+          panA.connect(wetLowpass);
+          panB.connect(wetLowpass);
+          wetLowpass.connect(wetGain);
+          wetGain.connect(comp);
+
+          comp.connect(lowShelf);
+          lowShelf.connect(highShelf);
+          highShelf.connect(output);
+          output.connect(audioCtx.destination);
+
+          return { input };
+        } catch (error) {
+          console.warn('[audio] failed to build sfx mixer, falling back to direct output', error);
+          return null;
+        }
+      })();
+
+      function getSfxDestinationNode() {
+        if (!audioCtx) return null;
+        return sfxMixer?.input || audioCtx.destination;
+      }
+
       function oneShotVoice({
         time,
         freq,
@@ -469,154 +785,94 @@
         slideTo = null
       }) {
         if (!freq || !duration) return;
+        const safeDuration = Math.max(0.012, Number(duration) || 0);
+        const peak = clamp(Number(gainPeak) || 0.16, 0.001, 0.45);
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
         osc.type = type;
         osc.detune.setValueAtTime(detune, time);
         osc.frequency.setValueAtTime(freq, time);
         if (slideTo && slideTo > 0) {
-          osc.frequency.exponentialRampToValueAtTime(slideTo, time + duration * 0.88);
+          osc.frequency.exponentialRampToValueAtTime(slideTo, time + safeDuration * 0.88);
         }
 
         gain.gain.setValueAtTime(0.0001, time);
-        gain.gain.exponentialRampToValueAtTime(gainPeak, time + duration * 0.16);
-        gain.gain.exponentialRampToValueAtTime(0.0001, time + duration);
+        gain.gain.exponentialRampToValueAtTime(peak, time + safeDuration * 0.16);
+        gain.gain.exponentialRampToValueAtTime(0.0001, time + safeDuration);
 
         osc.connect(gain);
         gain.connect(destination);
         osc.start(time);
-        osc.stop(time + duration + 0.02);
+        osc.stop(time + safeDuration + 0.02);
       }
 
-      // SFX
-      let catchVariantIndex = 0;
+      function resolveSfxEventType(type = 'catch') {
+        if (type === 'miss') return 'damage';
+        if (
+          type === 'ui' ||
+          type === 'star' ||
+          type === 'damage' ||
+          type === 'catch'
+        ) {
+          return type;
+        }
+        return 'catch';
+      }
+
+      function getSfxEventPreset(type = 'catch') {
+        const events = activeSfxProfile?.preset?.events;
+        if (!events) return null;
+        return events[resolveSfxEventType(type)] || events.catch || null;
+      }
+
+      const CATCH_TARGET_DURATION_SEC = 0.4;
+
+      function getEventSpanSec(eventPreset) {
+        if (!eventPreset || !Array.isArray(eventPreset.voices)) return 0;
+        let maxSpan = 0;
+        for (const voice of eventPreset.voices) {
+          const at = Math.max(0, Number(voice?.at) || 0);
+          const duration = Math.max(0, Number(voice?.duration) || 0);
+          maxSpan = Math.max(maxSpan, at + duration);
+        }
+        return maxSpan;
+      }
+
       function sfx(type='catch') {
         if (!audioCtx || !isSfxEnabled()) return;
+        const resolvedType = resolveSfxEventType(type);
+        const destination = getSfxDestinationNode();
+        if (!destination) return;
+        const eventPreset = getSfxEventPreset(resolvedType);
+        if (!eventPreset || !Array.isArray(eventPreset.voices) || !eventPreset.voices.length) return;
+        const baseEventSpanSec = getEventSpanSec(eventPreset);
+        const timeScale = (
+          resolvedType === 'catch' &&
+          baseEventSpanSec > 0
+        )
+          ? clamp(CATCH_TARGET_DURATION_SEC / baseEventSpanSec, 0.25, 8)
+          : 1;
         const t0 = audioCtx.currentTime + 0.004;
         const out = audioCtx.createGain();
-        out.gain.value = type === 'ui' ? 0.21 : type === 'star' ? 0.27 : 0.23;
-        out.connect(audioCtx.destination);
-
-        if (type === 'ui') {
+        const eventGainScale = resolvedType === 'catch' ? CATCH_PRESENCE_GAIN : 1;
+        out.gain.value = clamp((Number(eventPreset.outGain) || 0.22) * SFX_PRESENCE_GAIN * eventGainScale, 0.01, 0.5);
+        out.connect(destination);
+        for (const voice of eventPreset.voices) {
+          const voiceAt = Math.max(0, Number(voice.at) || 0) * timeScale;
+          const voiceDuration = Math.max(0.012, (Number(voice.duration) || 0) * timeScale);
           oneShotVoice({
-            time:t0,
-            freq:1620,
-            duration:0.042,
-            destination:out,
-            type:'triangle',
-            gainPeak:0.075,
-            slideTo:1460
-          });
-          oneShotVoice({
-            time:t0 + 0.004,
-            freq:2400,
-            duration:0.024,
-            destination:out,
-            type:'sine',
-            gainPeak:0.032
-          });
-          return;
-        }
-
-        if (type === 'damage' || type === 'miss') {
-          const damageNotes = [296, 228, 174];
-          for (let i=0; i<damageNotes.length; i++) {
-            const base = damageNotes[i];
-            const t = t0 + i * 0.028;
-            oneShotVoice({
-              time:t,
-              freq:base,
-              duration:0.11,
-              destination:out,
-              type:'triangle',
-              gainPeak:0.115,
-              slideTo:Math.max(96, base * 0.74)
-            });
-            oneShotVoice({
-              time:t + 0.002,
-              freq:base * 0.52,
-              duration:0.084,
-              destination:out,
-              type:'sine',
-              gainPeak:0.058,
-              detune:-8
-            });
-          }
-          return;
-        }
-
-        if (type === 'star') {
-          const starNotes = [740, 988, 1320, 1760];
-          for (let i=0; i<starNotes.length; i++) {
-            const base = starNotes[i];
-            const t = t0 + i * 0.026;
-            oneShotVoice({
-              time:t,
-              freq:base,
-              duration:0.13,
-              destination:out,
-              type:'triangle',
-              gainPeak:0.14
-            });
-            oneShotVoice({
-              time:t + 0.003,
-              freq:base * 2.0,
-              duration:0.088,
-              destination:out,
-              type:'square',
-              gainPeak:0.09,
-              detune:6
-            });
-          }
-          oneShotVoice({
-            time:t0 + 0.022,
-            freq:2520,
-            duration:0.16,
-            destination:out,
-            type:'square',
-            gainPeak:0.076
-          });
-          return;
-        }
-
-        const catchVariants = [
-          { notes:[560, 760, 960], step:0.024, dur:0.098, wave:'triangle', harmWave:'square', harmMul:1.5, sparkleFreq:2120 },
-          { notes:[520, 700, 900], step:0.022, dur:0.094, wave:'triangle', harmWave:'sine', harmMul:1.72, sparkleFreq:1980 },
-          { notes:[600, 820, 1080], step:0.025, dur:0.102, wave:'triangle', harmWave:'square', harmMul:1.42, sparkleFreq:2240 }
-        ];
-        const preset = catchVariants[catchVariantIndex % catchVariants.length];
-        catchVariantIndex += 1;
-
-        for (let i=0; i<preset.notes.length; i++) {
-          const base = preset.notes[i];
-          const t = t0 + i * preset.step;
-          oneShotVoice({
-            time:t,
-            freq:base,
-            duration:preset.dur,
-            destination:out,
-            type:preset.wave,
-            gainPeak:0.136
-          });
-          oneShotVoice({
-            time:t + 0.003,
-            freq:base * preset.harmMul,
-            duration:preset.dur * 0.66,
-            destination:out,
-            type:preset.harmWave,
-            gainPeak:0.058,
-            detune:6
+            time: t0 + voiceAt,
+            freq: Number(voice.freq) || 0,
+            duration: voiceDuration,
+            destination: out,
+            type: voice.type || 'triangle',
+            gainPeak: Number(voice.gainPeak) || 0.1,
+            detune: Number(voice.detune) || 0,
+            slideTo: Number(voice.slideTo) || 0
           });
         }
-        oneShotVoice({
-          time:t0 + preset.step * 0.5,
-          freq:preset.sparkleFreq,
-          duration:0.086,
-          destination:out,
-          type:'square',
-          gainPeak:0.05
-        });
       }
+      debugState.playSfx = (type = 'catch') => sfx(type);
 
       function syncSharedState() {
         sharedState.running = running;
@@ -1489,7 +1745,7 @@
 
         if (audioEngine) {
           audioEngine.pause();
-          audioEngine.setMode('normal', SOUND_CROSSFADE_MS);
+          safeAudioTransition('normal');
         }
       }
 
@@ -3253,184 +3509,203 @@
       // Main loop
       let last = performance.now();
       function frame(now) {
-        const dt = Math.min(0.033, (now - last) / 1000);
-        last = now;
+        let dt = 0;
+        try {
+          dt = Math.min(0.033, (now - last) / 1000);
+          last = now;
 
-        // Clear
-        if (rendererEngine?.preFrame) rendererEngine.preFrame();
-        else ctx.clearRect(0,0,getGameWidth(),getGameHeight());
-        updateDrawFixScale();
+          // Clear
+          if (rendererEngine?.preFrame) rendererEngine.preFrame();
+          else ctx.clearRect(0,0,getGameWidth(),getGameHeight());
+          updateDrawFixScale();
 
-        if (perfEngine) {
-          const sample = perfEngine.recordFrame(dt * 1000);
-          const inputAt = inputEngine?.consumeLatestInputAt?.() ?? lastInputAt;
-          if (Number.isFinite(inputAt)) {
-            perfEngine.recordInputLatency(inputAt, now);
-            lastInputAt = null;
-          }
-          if (qualityMode !== 'auto') {
-            const fixedTier = getQualityTierFromMode(qualityMode);
-            if (perfEngine.qualityTier !== fixedTier) perfEngine.setQualityTier(fixedTier);
-          }
-          if (qualityMode === 'auto' && sample.tierChanged) {
-            qualityTier = sample.nextTier;
-            pendingTierApply = true;
-            updateQualityDataAttrs();
-          }
-          if (pendingTierApply) {
-            pendingTierApply = false;
-            scheduleResponsiveProfileApply();
-          }
-        }
-
-        // Background
-        drawBackground();
-
-        if (running && !paused) {
-          totalElapsed += dt;
-          updateBaselineMetrics(dt);
-          updateFeverEffects(dt);
-
-          // speed multiplier (every 15 sec +15%)
-          const gMul = globalSpeedMultiplier();
-
-          // Basket movement
-          const left = keys.has('ArrowLeft') || keys.has('a') || keys.has('A');
-          const right = keys.has('ArrowRight') || keys.has('d') || keys.has('D');
-
-          if (left) basket.vx = -basket.speed;
-          else if (right) basket.vx = basket.speed;
-          else basket.vx *= 0.85;
-
-          // Mouse target easing
-          if (basket.targetX != null) {
-            const dx = basket.targetX - basket.x;
-            basket.x += dx * (1 - Math.pow(0.000001, dt));
-          } else {
-            basket.x += basket.vx * dt;
-          }
-
-          basket.x = clamp(basket.x, basket.w/2 + 14, getGameWidth() - basket.w/2 - 14);
-
-          // Spawn
-          spawnTimer += dt;
-          if (spawnTimer >= spawnInterval()) {
-            spawnTimer = 0;
-            spawnObject();
-          }
-
-          // Fever timer UI & end
-          if (fever) {
-            const remain = Math.max(0, feverEnd - totalElapsed);
-            feverTimeEl.textContent = `${remain.toFixed(1)}s`;
-            if (remain <= 0) {
-              fever = false;
-              if (audioEngine) audioEngine.setMode('normal', SOUND_CROSSFADE_MS);
-              setFeverPhase('exit', totalElapsed);
-              pop(getGameWidth()*0.5, getGameHeight()*0.22, '#ffffff', 24);
+          if (perfEngine) {
+            const sample = perfEngine.recordFrame(dt * 1000);
+            const inputAt = inputEngine?.consumeLatestInputAt?.() ?? lastInputAt;
+            if (Number.isFinite(inputAt)) {
+              perfEngine.recordInputLatency(inputAt, now);
+              lastInputAt = null;
+            }
+            if (qualityMode !== 'auto') {
+              const fixedTier = getQualityTierFromMode(qualityMode);
+              if (perfEngine.qualityTier !== fixedTier) perfEngine.setQualityTier(fixedTier);
+            }
+            if (qualityMode === 'auto' && sample.tierChanged) {
+              qualityTier = sample.nextTier;
+              pendingTierApply = true;
+              updateQualityDataAttrs();
+            }
+            if (pendingTierApply) {
+              pendingTierApply = false;
+              scheduleResponsiveProfileApply();
             }
           }
 
-          // Update objects
-          for (let i=objects.length-1;i>=0;i--){
-            const o = objects[i];
+          // Background
+          drawBackground();
 
-            const vy = o.vyBase * o.baseMul * gMul;
+          if (running && !paused) {
+            totalElapsed += dt;
+            updateBaselineMetrics(dt);
+            updateFeverEffects(dt);
 
-            o.y += vy * dt;
-            o.rot += o.spin * dt * rotationMotionScale;
+            // speed multiplier (every 15 sec +15%)
+            const gMul = globalSpeedMultiplier();
 
-            // Catch?
-            if (intersectsObjBasket(o)) {
-              objects.splice(i,1);
+            // Basket movement
+            const left = keys.has('ArrowLeft') || keys.has('a') || keys.has('A');
+            const right = keys.has('ArrowRight') || keys.has('d') || keys.has('D');
 
-              if (o.kind === 'star') {
-                // Fever start (20s), points x2
-                fever = true;
-                feverEnd = Math.max(feverEnd, totalElapsed) + FEVER_DURATION;
-                setFeverPhase('enter', totalElapsed, o.x, o.y);
-                playMetrics.feverTriggers += 1;
+            if (left) basket.vx = -basket.speed;
+            else if (right) basket.vx = basket.speed;
+            else basket.vx *= 0.85;
+
+            // Mouse target easing
+            if (basket.targetX != null) {
+              const dx = basket.targetX - basket.x;
+              basket.x += dx * (1 - Math.pow(0.000001, dt));
+            } else {
+              basket.x += basket.vx * dt;
+            }
+
+            basket.x = clamp(basket.x, basket.w/2 + 14, getGameWidth() - basket.w/2 - 14);
+
+            // Spawn
+            spawnTimer += dt;
+            if (spawnTimer >= spawnInterval()) {
+              spawnTimer = 0;
+              spawnObject();
+            }
+
+            // Fever timer UI & end
+            if (fever) {
+              const remain = Math.max(0, feverEnd - totalElapsed);
+              feverTimeEl.textContent = `${remain.toFixed(1)}s`;
+              if (remain <= 0) {
+                fever = false;
+                safeAudioTransition('normal');
+                setFeverPhase('exit', totalElapsed);
+                pop(getGameWidth()*0.5, getGameHeight()*0.22, '#ffffff', 24);
+              }
+            }
+
+            // Update objects
+            for (let i=objects.length-1;i>=0;i--){
+              const o = objects[i];
+
+              const vy = o.vyBase * o.baseMul * gMul;
+
+              o.y += vy * dt;
+              o.rot += o.spin * dt * rotationMotionScale;
+
+              // Catch?
+              if (intersectsObjBasket(o)) {
+                objects.splice(i,1);
+
+                if (o.kind === 'star') {
+                  // Fever start (20s), points x2
+                  fever = true;
+                  feverEnd = Math.max(feverEnd, totalElapsed) + FEVER_DURATION;
+                  setFeverPhase('enter', totalElapsed, o.x, o.y);
+                  playMetrics.feverTriggers += 1;
+
+                  spawnImpactByEvent(o);
+                  addFloatText(o.x, o.y - 10, 'フィーバー！', '#ffd670');
+                  triggerFeverHitFeedback(o.x, o.y, '#ffd670');
+
+                  sfx('star');
+                  safeAudioTransition('fever');
+                  continue;
+                }
+
+                if (o.kind === 'bug') {
+                  misses++;
+                  updateHearts();
+                  spawnImpactByEvent(o);
+                  addFloatText(o.x, o.y - 10, 'ダメージ!', '#ff6688');
+                  sfx('damage');
+                  triggerLifeDamageEffect();
+                  if (misses >= MAX_MISSES) {
+                    endGame();
+                    break;
+                  }
+                  continue;
+                }
 
                 spawnImpactByEvent(o);
-                addFloatText(o.x, o.y - 10, 'フィーバー！', '#ffd670');
-                triggerFeverHitFeedback(o.x, o.y, '#ffd670');
-
-                sfx('star');
-                if (audioEngine) audioEngine.setMode('fever', SOUND_CROSSFADE_MS);
+                applyScoreGain(o);
+                sfx('catch');
                 continue;
               }
 
-              if (o.kind === 'bug') {
+              // Missed?
+              if (o.y - o.r > getGameHeight() + 10) {
+                objects.splice(i,1);
+
+                if (o.kind === 'star' || o.kind === 'bug') continue;
+
                 misses++;
                 updateHearts();
-                spawnImpactByEvent(o);
-                addFloatText(o.x, o.y - 10, 'ダメージ!', '#ff6688');
+                pop(clamp(o.x, 40, getGameWidth()-40), getGameHeight()-55, '#ff4d6d', 14);
                 sfx('damage');
                 triggerLifeDamageEffect();
+
                 if (misses >= MAX_MISSES) {
                   endGame();
                   break;
                 }
-                continue;
-              }
-
-              spawnImpactByEvent(o);
-              applyScoreGain(o);
-              sfx('catch');
-              continue;
-            }
-
-            // Missed?
-            if (o.y - o.r > getGameHeight() + 10) {
-              objects.splice(i,1);
-
-              if (o.kind === 'star' || o.kind === 'bug') continue;
-
-              misses++;
-              updateHearts();
-              pop(clamp(o.x, 40, getGameWidth()-40), getGameHeight()-55, '#ff4d6d', 14);
-              sfx('damage');
-              triggerLifeDamageEffect();
-
-              if (misses >= MAX_MISSES) {
-                endGame();
-                break;
               }
             }
           }
+
+          updateImpactFx(dt);
+
+          // Draw objects
+          for (const o of objects) drawObject(o);
+
+          // Draw basket
+          drawBasket();
+
+          // Impact FX
+          drawImpactFx();
+
+          // Fever foreground FX
+          drawFeverSparkLayer();
+          drawFeverHitBurstsLayer();
+
+          // Particles & float texts
+          drawParticles(dt);
+          drawFloatTexts(dt);
+          drawCriticalLifeOverlay(now);
+
+          if (damageFlash > 0.001) {
+            const alpha = clamp(damageFlash, 0, 1) * (reducedMotionQuery.matches ? 0.14 : 0.2);
+            ctx.save();
+            ctx.fillStyle = `rgba(255,66,112,${alpha.toFixed(3)})`;
+            ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
+            ctx.restore();
+          }
+          damageFlash = Math.max(0, damageFlash - dt * (reducedMotionQuery.matches ? 1.9 : 2.7));
+
+          syncSharedState();
+        } catch (error) {
+          const message = error?.message || String(error);
+          debugState.lastFrameError = {
+            message,
+            timeMs: Math.round(now),
+            running,
+            paused,
+            gameOver,
+            fever,
+            feverPhase: feverFx.phase
+          };
+          console.warn('[frame] recovered from runtime error', { message, error });
+          try {
+            syncSharedState();
+          } catch {}
+        } finally {
+          requestAnimationFrame(frame);
         }
-
-        updateImpactFx(dt);
-
-        // Draw objects
-        for (const o of objects) drawObject(o);
-
-        // Draw basket
-        drawBasket();
-
-        // Impact FX
-        drawImpactFx();
-
-        // Fever foreground FX
-        drawFeverSparkLayer();
-        drawFeverHitBurstsLayer();
-
-        // Particles & float texts
-        drawParticles(dt);
-        drawFloatTexts(dt);
-        drawCriticalLifeOverlay(now);
-
-        if (damageFlash > 0.001) {
-          const alpha = clamp(damageFlash, 0, 1) * (reducedMotionQuery.matches ? 0.14 : 0.2);
-          ctx.save();
-          ctx.fillStyle = `rgba(255,66,112,${alpha.toFixed(3)})`;
-          ctx.fillRect(0, 0, getGameWidth(), getGameHeight());
-          ctx.restore();
-        }
-        damageFlash = Math.max(0, damageFlash - dt * (reducedMotionQuery.matches ? 1.9 : 2.7));
-
-        syncSharedState();
-        requestAnimationFrame(frame);
       }
 
       // Init
