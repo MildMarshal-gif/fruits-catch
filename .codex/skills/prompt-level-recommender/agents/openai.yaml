@@ -1,3 +1,0 @@
-interface:
-  display_name: "Prompt Level Recommender"
-  short_description: "Create high-quality prompts; suggest Codex level only for Codex-targeted requests"
