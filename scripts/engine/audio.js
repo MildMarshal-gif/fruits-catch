@@ -360,6 +360,8 @@
       const now = audioContext.currentTime;
       const normalFrom = clamp(normalBus.gain.value, 0, 1);
       const feverFrom = clamp(feverBus.gain.value, 0, 1);
+      const targetNormal = mode === 'fever' ? 0 : 1;
+      const targetFever = mode === 'fever' ? 1 : 0;
       const thetaStart = Math.atan2(feverFrom, Math.max(0.0001, normalFrom));
       const thetaEnd = mode === 'fever' ? Math.PI / 2 : 0;
       const steps = 64;
@@ -377,10 +379,64 @@
       feverBus.gain.cancelScheduledValues(now);
       normalBus.gain.setValueAtTime(normalFrom, now);
       feverBus.gain.setValueAtTime(feverFrom, now);
-      normalBus.gain.setValueCurveAtTime(normalCurve, now, duration);
-      feverBus.gain.setValueCurveAtTime(feverCurve, now, duration);
-      normalBus.gain.setValueAtTime(mode === 'fever' ? 0 : 1, now + duration);
-      feverBus.gain.setValueAtTime(mode === 'fever' ? 1 : 0, now + duration);
+      const canUseValueCurve = (
+        typeof normalBus.gain.setValueCurveAtTime === 'function' &&
+        typeof feverBus.gain.setValueCurveAtTime === 'function'
+      );
+
+      if (canUseValueCurve) {
+        try {
+          normalBus.gain.setValueCurveAtTime(normalCurve, now, duration);
+          feverBus.gain.setValueCurveAtTime(feverCurve, now, duration);
+          normalBus.gain.setValueAtTime(targetNormal, now + duration);
+          feverBus.gain.setValueAtTime(targetFever, now + duration);
+          return;
+        } catch (error) {
+          if (logger && typeof logger.warn === 'function') {
+            logger.warn('[audio] setValueCurveAtTime failed; fallback to linear ramp', { mode, error });
+          }
+        }
+      }
+
+      try {
+        normalBus.gain.linearRampToValueAtTime(targetNormal, now + duration);
+        feverBus.gain.linearRampToValueAtTime(targetFever, now + duration);
+        normalBus.gain.setValueAtTime(targetNormal, now + duration);
+        feverBus.gain.setValueAtTime(targetFever, now + duration);
+      } catch (error) {
+        if (logger && typeof logger.warn === 'function') {
+          logger.warn('[audio] linear crossfade failed; fallback to instant gain', { mode, error });
+        }
+        setInstantModeGains(mode);
+      }
+    }
+
+    function runTransitionSafely(transitionName, fallbackMode, fn) {
+      try {
+        fn();
+        return true;
+      } catch (error) {
+        if (logger && typeof logger.warn === 'function') {
+          logger.warn('[audio] mode transition failed; applying fallback', {
+            transitionName,
+            fallbackMode,
+            error
+          });
+        }
+        try {
+          clearPendingStops();
+          setInstantModeGains(fallbackMode);
+        } catch (fallbackError) {
+          if (logger && typeof logger.warn === 'function') {
+            logger.warn('[audio] mode fallback failed', {
+              transitionName,
+              fallbackMode,
+              error: fallbackError
+            });
+          }
+        }
+        return false;
+      }
     }
 
     async function loadTrack(trackId) {
@@ -533,23 +589,25 @@
       const fadeSec = Math.max(0.02, Number(crossfadeMs || defaultCrossfadeMs) / 1000);
 
       if (prevMode === nextMode) {
-        if (nextMode === 'fever') {
-          if (!loopSources.fever) {
-            createLoopSource('fever', startAt, loopRuntime.fever.offset);
+        runTransitionSafely('same-mode-refresh', nextMode, () => {
+          if (nextMode === 'fever') {
+            if (!loopSources.fever) {
+              createLoopSource('fever', startAt, loopRuntime.fever.offset);
+            }
+            if (loopSources.normal) {
+              stopLoopSource('normal', { preserveOffset: false, atTime: now });
+            }
+          } else {
+            if (!loopSources.normal) {
+              createLoopSource('normal', startAt, getNormalResumeTarget());
+            }
+            if (loopSources.fever) {
+              stopLoopSource('fever', { preserveOffset: false, atTime: now });
+            }
           }
-          if (loopSources.normal) {
-            stopLoopSource('normal', { preserveOffset: false, atTime: now });
-          }
-        } else {
-          if (!loopSources.normal) {
-            createLoopSource('normal', startAt, getNormalResumeTarget());
-          }
-          if (loopSources.fever) {
-            stopLoopSource('fever', { preserveOffset: false, atTime: now });
-          }
-        }
-        clearPendingStops();
-        setInstantModeGains(nextMode);
+          clearPendingStops();
+          setInstantModeGains(nextMode);
+        });
         return;
       }
 
@@ -560,28 +618,34 @@
         hasNormalResumeOffset = true;
         loopRuntime.normal.offset = normalResumeOffset;
 
-        restartLoopSource('fever', startAt, 0);
-        setModeCrossfade('fever', crossfadeMs);
-        scheduleStop('normal', fadeSec + 0.04, false);
+        runTransitionSafely('normal-to-fever', 'fever', () => {
+          restartLoopSource('fever', startAt, 0);
+          setModeCrossfade('fever', crossfadeMs);
+          scheduleStop('normal', fadeSec + 0.04, false);
+        });
         return;
       }
 
       if (prevMode === 'fever' && nextMode === 'normal') {
         const resumeOffset = getNormalResumeTarget();
-        restartLoopSource('normal', startAt, resumeOffset);
-        setModeCrossfade('normal', crossfadeMs);
-        scheduleStop('fever', fadeSec + 0.04, false);
+        runTransitionSafely('fever-to-normal', 'normal', () => {
+          restartLoopSource('normal', startAt, resumeOffset);
+          setModeCrossfade('normal', crossfadeMs);
+          scheduleStop('fever', fadeSec + 0.04, false);
+        });
         hasNormalResumeOffset = false;
         normalResumeOffset = resumeOffset;
         return;
       }
 
-      if (nextMode === 'fever') {
-        restartLoopSource('fever', startAt, 0);
-      } else {
-        restartLoopSource('normal', startAt, getNormalResumeTarget());
-      }
-      setInstantModeGains(nextMode);
+      runTransitionSafely('fallback-transition', nextMode, () => {
+        if (nextMode === 'fever') {
+          restartLoopSource('fever', startAt, 0);
+        } else {
+          restartLoopSource('normal', startAt, getNormalResumeTarget());
+        }
+        setInstantModeGains(nextMode);
+      });
     }
 
     function pause() {
