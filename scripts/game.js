@@ -18,6 +18,8 @@
         pauseRestartBtn,
         pauseBtn,
         soundBtn,
+        bgmDevBtn,
+        sfxDevBtn,
         feverBadge,
         feverTimeEl
       } = FC.dom;
@@ -377,6 +379,11 @@
       const SOUND_CROSSFADE_MS = 180;
       let soundOn = FC.settings?.getSoundOn?.();
       if (typeof soundOn !== 'boolean') soundOn = true;
+      let bgmOn = FC.settings?.getBgmOn?.();
+      if (typeof bgmOn !== 'boolean') bgmOn = true;
+      let sfxOn = FC.settings?.getSfxOn?.();
+      if (typeof sfxOn !== 'boolean') sfxOn = true;
+      const devAudioControlsEnabled = !!FC.debug?.devAudioControlsEnabled;
       const audioEngine = typeof FC.createAudioEngine === 'function'
         ? FC.createAudioEngine({
             audioContext: audioCtx,
@@ -386,31 +393,67 @@
           })
         : null;
 
+      function isBgmEnabled() {
+        return !!(soundOn && bgmOn);
+      }
+
+      function isSfxEnabled() {
+        return !!(soundOn && sfxOn);
+      }
+
+      async function ensureAudioContextResumed() {
+        if (!audioCtx) return;
+        try { await audioCtx.resume?.(); } catch {}
+      }
+
       ui.wireControls({
         startBtn,
         pauseBtn,
         resumeBtn,
         pauseRestartBtn,
         soundBtn,
+        bgmDevBtn,
+        sfxDevBtn,
+        devAudioControlsEnabled,
         onStart: () => startGame(),
         onPause: () => setPaused(true),
         onResume: () => setPaused(false),
         onRestart: () => restartGame(),
+        onUiClick: () => sfx('ui'),
         isSoundOn: () => soundOn,
+        isBgmOn: () => bgmOn,
+        isSfxOn: () => sfxOn,
         onToggleSound: async (nextSoundOn) => {
           soundOn = !!nextSoundOn;
           FC.settings?.setSoundOn?.(soundOn);
-          if (audioCtx && soundOn) {
-            try { await audioCtx.resume(); } catch {}
-          }
+          if (soundOn) await ensureAudioContextResumed();
           if (audioEngine) {
-            audioEngine.setEnabled(soundOn);
-            if (soundOn && running && !paused && !gameOver) {
+            audioEngine.setEnabled(isBgmEnabled());
+            if (isBgmEnabled() && running && !paused && !gameOver) {
               await audioEngine.startSession(fever ? 'fever' : 'normal');
-            } else if (!soundOn) {
+            } else if (!isBgmEnabled()) {
               audioEngine.pause();
             }
           }
+          syncSharedState();
+        },
+        onToggleBgm: async (nextBgmOn) => {
+          bgmOn = !!nextBgmOn;
+          FC.settings?.setBgmOn?.(bgmOn);
+          if (isBgmEnabled()) await ensureAudioContextResumed();
+          if (audioEngine) {
+            audioEngine.setEnabled(isBgmEnabled());
+            if (isBgmEnabled() && running && !paused && !gameOver) {
+              await audioEngine.startSession(fever ? 'fever' : 'normal');
+            } else if (!isBgmEnabled()) {
+              audioEngine.pause();
+            }
+          }
+          syncSharedState();
+        },
+        onToggleSfx: async (nextSfxOn) => {
+          sfxOn = !!nextSfxOn;
+          FC.settings?.setSfxOn?.(sfxOn);
           syncSharedState();
         }
       });
@@ -446,18 +489,103 @@
       }
 
       // SFX
+      let catchVariantIndex = 0;
       function sfx(type='catch') {
-        if (!audioCtx || !soundOn) return;
+        if (!audioCtx || !isSfxEnabled()) return;
         const t0 = audioCtx.currentTime + 0.004;
         const out = audioCtx.createGain();
-        out.gain.value = 0.24;
+        out.gain.value = type === 'ui' ? 0.21 : type === 'star' ? 0.27 : 0.23;
         out.connect(audioCtx.destination);
 
-        const preset = type === 'miss'
-          ? { notes:[280, 220, 160], step:0.034, dur:0.11, wave:'triangle', harmWave:'sine', harmMul:0.50, sparkle:false }
-          : type === 'star'
-            ? { notes:[740, 988, 1320, 1760], step:0.026, dur:0.13, wave:'triangle', harmWave:'square', harmMul:2.0, sparkle:true }
-            : { notes:[560, 760, 960], step:0.024, dur:0.10, wave:'triangle', harmWave:'square', harmMul:1.5, sparkle:true };
+        if (type === 'ui') {
+          oneShotVoice({
+            time:t0,
+            freq:1620,
+            duration:0.042,
+            destination:out,
+            type:'triangle',
+            gainPeak:0.075,
+            slideTo:1460
+          });
+          oneShotVoice({
+            time:t0 + 0.004,
+            freq:2400,
+            duration:0.024,
+            destination:out,
+            type:'sine',
+            gainPeak:0.032
+          });
+          return;
+        }
+
+        if (type === 'damage' || type === 'miss') {
+          const damageNotes = [296, 228, 174];
+          for (let i=0; i<damageNotes.length; i++) {
+            const base = damageNotes[i];
+            const t = t0 + i * 0.028;
+            oneShotVoice({
+              time:t,
+              freq:base,
+              duration:0.11,
+              destination:out,
+              type:'triangle',
+              gainPeak:0.115,
+              slideTo:Math.max(96, base * 0.74)
+            });
+            oneShotVoice({
+              time:t + 0.002,
+              freq:base * 0.52,
+              duration:0.084,
+              destination:out,
+              type:'sine',
+              gainPeak:0.058,
+              detune:-8
+            });
+          }
+          return;
+        }
+
+        if (type === 'star') {
+          const starNotes = [740, 988, 1320, 1760];
+          for (let i=0; i<starNotes.length; i++) {
+            const base = starNotes[i];
+            const t = t0 + i * 0.026;
+            oneShotVoice({
+              time:t,
+              freq:base,
+              duration:0.13,
+              destination:out,
+              type:'triangle',
+              gainPeak:0.14
+            });
+            oneShotVoice({
+              time:t + 0.003,
+              freq:base * 2.0,
+              duration:0.088,
+              destination:out,
+              type:'square',
+              gainPeak:0.09,
+              detune:6
+            });
+          }
+          oneShotVoice({
+            time:t0 + 0.022,
+            freq:2520,
+            duration:0.16,
+            destination:out,
+            type:'square',
+            gainPeak:0.076
+          });
+          return;
+        }
+
+        const catchVariants = [
+          { notes:[560, 760, 960], step:0.024, dur:0.098, wave:'triangle', harmWave:'square', harmMul:1.5, sparkleFreq:2120 },
+          { notes:[520, 700, 900], step:0.022, dur:0.094, wave:'triangle', harmWave:'sine', harmMul:1.72, sparkleFreq:1980 },
+          { notes:[600, 820, 1080], step:0.025, dur:0.102, wave:'triangle', harmWave:'square', harmMul:1.42, sparkleFreq:2240 }
+        ];
+        const preset = catchVariants[catchVariantIndex % catchVariants.length];
+        catchVariantIndex += 1;
 
         for (let i=0; i<preset.notes.length; i++) {
           const base = preset.notes[i];
@@ -468,29 +596,26 @@
             duration:preset.dur,
             destination:out,
             type:preset.wave,
-            gainPeak:type === 'miss' ? 0.11 : 0.14
+            gainPeak:0.136
           });
           oneShotVoice({
             time:t + 0.003,
             freq:base * preset.harmMul,
-            duration:preset.dur * 0.68,
+            duration:preset.dur * 0.66,
             destination:out,
             type:preset.harmWave,
-            gainPeak:type === 'star' ? 0.09 : 0.06,
+            gainPeak:0.058,
             detune:6
           });
         }
-
-        if (preset.sparkle) {
-          oneShotVoice({
-            time:t0 + preset.step * 0.5,
-            freq:type === 'star' ? 2480 : 2120,
-            duration:type === 'star' ? 0.14 : 0.09,
-            destination:out,
-            type:'square',
-            gainPeak:type === 'star' ? 0.075 : 0.05
-          });
-        }
+        oneShotVoice({
+          time:t0 + preset.step * 0.5,
+          freq:preset.sparkleFreq,
+          duration:0.086,
+          destination:out,
+          type:'square',
+          gainPeak:0.05
+        });
       }
 
       function syncSharedState() {
@@ -502,6 +627,8 @@
         sharedState.fever = fever;
         sharedState.feverEnd = feverEnd;
         sharedState.soundOn = soundOn;
+        sharedState.bgmOn = bgmOn;
+        sharedState.sfxOn = sfxOn;
       }
 
       // Helpers
@@ -1397,10 +1524,12 @@
         pauseBtn.disabled = false;
         updatePausePanel();
 
-        if (audioCtx) audioCtx.resume?.();
+        if (isBgmEnabled()) await ensureAudioContextResumed();
         if (audioEngine) {
-          audioEngine.setEnabled(soundOn);
-          await audioEngine.startSession('normal');
+          audioEngine.setEnabled(isBgmEnabled());
+          if (isBgmEnabled()) {
+            await audioEngine.startSession('normal');
+          }
         }
       }
 
@@ -1418,10 +1547,12 @@
         pauseBtn.disabled = false;
         updatePausePanel();
 
-        if (audioCtx) audioCtx.resume?.();
+        if (isBgmEnabled()) await ensureAudioContextResumed();
         if (audioEngine) {
-          audioEngine.setEnabled(soundOn);
-          await audioEngine.startSession('normal');
+          audioEngine.setEnabled(isBgmEnabled());
+          if (isBgmEnabled()) {
+            await audioEngine.startSession('normal');
+          }
         }
       }
 
@@ -1435,7 +1566,7 @@
         if (audioEngine) {
           if (paused) {
             audioEngine.pause();
-          } else if (soundOn) {
+          } else if (isBgmEnabled()) {
             audioEngine.resume();
           }
         }
@@ -3234,7 +3365,7 @@
                 updateHearts();
                 spawnImpactByEvent(o);
                 addFloatText(o.x, o.y - 10, 'ダメージ!', '#ff6688');
-                sfx('miss');
+                sfx('damage');
                 triggerLifeDamageEffect();
                 if (misses >= MAX_MISSES) {
                   endGame();
@@ -3258,7 +3389,7 @@
               misses++;
               updateHearts();
               pop(clamp(o.x, 40, getGameWidth()-40), getGameHeight()-55, '#ff4d6d', 14);
-              sfx('miss');
+              sfx('damage');
               triggerLifeDamageEffect();
 
               if (misses >= MAX_MISSES) {
@@ -3304,7 +3435,7 @@
 
       // Init
       function shouldResumeBgmOnForeground() {
-        return running && !paused && !gameOver && soundOn;
+        return running && !paused && !gameOver && isBgmEnabled();
       }
 
       function performForegroundBgmRecovery() {
@@ -3352,7 +3483,7 @@
       // Preload in background; startGame/restartGame still applies timeout guard.
       void loadGameAssets();
       if (audioEngine) {
-        audioEngine.setEnabled(soundOn);
+        audioEngine.setEnabled(isBgmEnabled());
         void audioEngine.prime();
       }
       document.addEventListener('visibilitychange', handleVisibilityChange);

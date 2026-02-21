@@ -182,28 +182,85 @@
     resumeBtn,
     pauseRestartBtn,
     soundBtn,
+    bgmDevBtn,
+    sfxDevBtn,
+    devAudioControlsEnabled,
     onStart,
     onPause,
     onResume,
     onRestart,
     isSoundOn,
-    onToggleSound
+    onToggleSound,
+    isBgmOn,
+    isSfxOn,
+    onToggleBgm,
+    onToggleSfx,
+    onUiClick
   }) {
-    startBtn.addEventListener('click', () => onStart());
-    pauseBtn.addEventListener('click', () => onPause());
-    resumeBtn.addEventListener('click', () => onResume());
-    pauseRestartBtn.addEventListener('click', () => onRestart());
+    const playUiClick = () => {
+      if (typeof onUiClick === 'function') onUiClick();
+    };
+
+    startBtn.addEventListener('click', () => {
+      playUiClick();
+      onStart();
+    });
+    pauseBtn.addEventListener('click', () => {
+      playUiClick();
+      onPause();
+    });
+    resumeBtn.addEventListener('click', () => {
+      playUiClick();
+      onResume();
+    });
+    pauseRestartBtn.addEventListener('click', () => {
+      playUiClick();
+      onRestart();
+    });
 
     const renderSoundLabel = () => {
-      soundBtn.textContent = `サウンド: ${isSoundOn() ? 'オン' : 'オフ'}`;
+      soundBtn.textContent = `サウンド(全体): ${isSoundOn() ? 'オン' : 'オフ'}`;
+    };
+
+    const canRenderDevAudioControls = !!(
+      devAudioControlsEnabled &&
+      bgmDevBtn &&
+      sfxDevBtn &&
+      typeof isBgmOn === 'function' &&
+      typeof isSfxOn === 'function' &&
+      typeof onToggleBgm === 'function' &&
+      typeof onToggleSfx === 'function'
+    );
+
+    const renderDevAudioLabels = () => {
+      if (!canRenderDevAudioControls) return;
+      bgmDevBtn.textContent = `BGM: ${isBgmOn() ? 'オン' : 'オフ'}`;
+      sfxDevBtn.textContent = `SE: ${isSfxOn() ? 'オン' : 'オフ'}`;
     };
 
     renderSoundLabel();
+    renderDevAudioLabels();
     soundBtn.addEventListener('click', async () => {
       const nextSoundOn = !isSoundOn();
       await onToggleSound(nextSoundOn);
       renderSoundLabel();
+      renderDevAudioLabels();
+      playUiClick();
     });
+
+    if (canRenderDevAudioControls) {
+      bgmDevBtn.addEventListener('click', async () => {
+        playUiClick();
+        await onToggleBgm(!isBgmOn());
+        renderDevAudioLabels();
+      });
+
+      sfxDevBtn.addEventListener('click', async () => {
+        playUiClick();
+        await onToggleSfx(!isSfxOn());
+        renderDevAudioLabels();
+      });
+    }
   }
 
   FC.ui = {

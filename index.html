@@ -4,9 +4,10 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>フルーツキャッチ</title>
+  <link rel="icon" type="image/png" href="./assets/images/ui/logo/fruit-catch-start-logo_v1.png" />
 
   <link rel="stylesheet" href="./styles/font-system.css" />
-  <link rel="stylesheet" href="./styles/main.css" />
+  <link rel="stylesheet" href="./styles/main.css?v=2026-02-21-audio-dev-1" />
 </head>
 
 <body>
@@ -77,19 +78,24 @@
           <button id="startBtn" type="button">スタート！</button>
           <button id="soundBtn" type="button">サウンド: オン</button>
         </div>
+        <!-- DEV: remove this block if per-channel audio controls are no longer needed -->
+        <div class="dev-audio-controls" id="devAudioControls" aria-label="開発用オーディオ切替">
+          <button id="bgmDevBtn" type="button">BGM: オン</button>
+          <button id="sfxDevBtn" type="button">SE: オン</button>
+        </div>
         <div class="note">右上の「一時停止」でいつでも止められる<br/>パソコンでも遊べるよ</div>
       </div>
     </div>
   </div>
 
-  <script src="./scripts/main.js"></script>
+  <script src="./scripts/main.js?v=2026-02-21-audio-dev-1"></script>
   <script src="./scripts/engine/perf.js"></script>
   <script src="./scripts/engine/renderer.js"></script>
   <script src="./scripts/engine/input.js"></script>
   <script src="./scripts/engine/assets.js"></script>
   <script src="./scripts/engine/audio.js"></script>
-  <script src="./scripts/ui.js"></script>
-  <script src="./scripts/game.js"></script>
+  <script src="./scripts/ui.js?v=2026-02-21-audio-dev-1"></script>
+  <script src="./scripts/game.js?v=2026-02-21-audio-dev-1"></script>
 </body>
 </html>
 
