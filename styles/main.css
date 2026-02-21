@@ -121,6 +121,19 @@
       pointer-events:none;
     }
 
+    .wrap::after{
+      content:"";
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      opacity:0;
+      background:
+        radial-gradient(120% 78% at 50% 50%, rgba(255,88,150,0) 40%, rgba(238,30,92,.24) 82%, rgba(188,12,62,.44) 100%),
+        linear-gradient(180deg, rgba(72,14,36,.06), rgba(52,10,28,.24));
+      transition:opacity .16s linear;
+      z-index:2;
+    }
+
     canvas{
       width:100%;
       height:100%;
@@ -895,12 +908,10 @@
 
     .wrap.damage-2{
       animation:hudDamageShake .34s ease-out;
-      filter:saturate(1.08);
     }
 
     .wrap.damage-3{
       animation:hudDamageShake .42s ease-out;
-      filter:saturate(1.15);
     }
 
     .wrap.life-caution{
@@ -914,6 +925,17 @@
         0 0 0 2px rgba(255,104,152,.46) inset,
         0 0 24px rgba(255,98,156,.26),
         var(--shadow-strong);
+      filter:saturate(.88) brightness(.93);
+    }
+
+    .wrap.life-critical::after{
+      opacity:.92;
+      animation:lifeCriticalScreenPulse 1.08s ease-in-out infinite;
+    }
+
+    .wrap.life-critical .stat-card[aria-label="ライフ"]{
+      transform-origin:50% 50%;
+      animation:lifeCriticalCardPulse 1.08s ease-in-out infinite;
     }
 
     .hearts.life-critical .life-heart.on{
@@ -928,6 +950,64 @@
       50%{
         transform:scale(1.1);
         filter:saturate(1.25);
+      }
+    }
+
+    @keyframes lifeCriticalCardPulse{
+      0%,100%{
+        transform:scale(1);
+        box-shadow:var(--shadow-soft);
+      }
+      50%{
+        transform:scale(1.018);
+        box-shadow:
+          0 0 0 2px rgba(255,122,172,.22) inset,
+          0 0 14px rgba(255,94,152,.24),
+          var(--shadow-soft);
+      }
+    }
+
+    @keyframes lifeCriticalScreenPulse{
+      0%,100%{
+        opacity:.82;
+        filter:saturate(.94);
+      }
+      50%{
+        opacity:1;
+        filter:saturate(1.06);
+      }
+    }
+
+    @keyframes hudDamageShakeReduced{
+      0%,100%{ transform:translate3d(0,0,0); }
+      20%{ transform:translate3d(-2px,0,0); }
+      40%{ transform:translate3d(2px,0,0); }
+      60%{ transform:translate3d(-1px,0,0); }
+      80%{ transform:translate3d(1px,0,0); }
+    }
+
+    @keyframes lifeCriticalAlarmReduced{
+      0%,100%{
+        transform:scale(1);
+        filter:saturate(1);
+      }
+      50%{
+        transform:scale(1.05);
+        filter:saturate(1.12);
+      }
+    }
+
+    @keyframes lifeCriticalCardPulseReduced{
+      0%,100%{
+        transform:scale(1);
+        box-shadow:var(--shadow-soft);
+      }
+      50%{
+        transform:scale(1.01);
+        box-shadow:
+          0 0 0 1px rgba(255,122,172,.16) inset,
+          0 0 8px rgba(255,94,152,.16),
+          var(--shadow-soft);
       }
     }
 
@@ -947,5 +1027,32 @@
       .score-card.is-fever,
       .score-card.is-fever .score-shell::before{
         animation:none !important;
+      }
+
+      .wrap.damage-1,
+      .wrap.damage-2,
+      .wrap.damage-3{
+        animation-name:hudDamageShakeReduced;
+        animation-duration:.2s;
+      }
+
+      .hearts.life-critical .life-heart.on{
+        animation-name:lifeCriticalAlarmReduced;
+        animation-duration:1.62s;
+      }
+
+      .wrap.life-critical .stat-card[aria-label="ライフ"]{
+        animation-name:lifeCriticalCardPulseReduced;
+        animation-duration:1.62s;
+      }
+
+      .wrap.life-critical::after{
+        animation-name:lifeCriticalScreenPulse;
+        animation-duration:1.62s;
+        opacity:.68;
+      }
+
+      .wrap.life-critical{
+        filter:saturate(.93) brightness(.96);
       }
     }
