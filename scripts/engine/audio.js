@@ -109,6 +109,22 @@
       normal: null,
       fever: null
     };
+    const loopRuntime = {
+      normal: {
+        startedAt: 0,
+        offset: 0
+      },
+      fever: {
+        startedAt: 0,
+        offset: 0
+      }
+    };
+    const pendingStops = {
+      normal: null,
+      fever: null
+    };
+    let normalResumeOffset = 0;
+    let hasNormalResumeOffset = false;
 
     function ensureContextAndNodes() {
       if (disposed) return false;
@@ -170,18 +186,81 @@
       try { source.disconnect(); } catch {}
     }
 
-    function stopLoopSource(trackId) {
+    function clearPendingStop(trackId) {
+      const timer = pendingStops[trackId];
+      if (!timer) return;
+      clearTimeout(timer);
+      pendingStops[trackId] = null;
+    }
+
+    function clearPendingStops() {
+      clearPendingStop('normal');
+      clearPendingStop('fever');
+    }
+
+    function normalizeOffsetForTrack(track, offset) {
+      const duration = Math.max(0, track?.buffer?.duration || 0);
+      if (duration <= 0) return Math.max(0, Number(offset) || 0);
+      if (!track?.loop) {
+        return clamp(Number(offset) || 0, 0, Math.max(0, duration - 0.01));
+      }
+      const loops = normalizeLoopBounds(track);
+      const raw = Math.max(0, Number(offset) || 0);
+      if (raw < loops.loopStart) return clamp(raw, 0, Math.max(0, duration - 0.01));
+      const span = Math.max(0.02, loops.loopEnd - loops.loopStart);
+      const looped = ((raw - loops.loopStart) % span + span) % span;
+      return clamp(loops.loopStart + looped, 0, Math.max(0, duration - 0.01));
+    }
+
+    function getTrackOffset(trackId, atTime = null) {
+      const track = trackState[trackId];
+      const runtime = loopRuntime[trackId];
+      if (!track || !runtime) return 0;
+      const now = Number.isFinite(atTime) ? atTime : (audioContext?.currentTime ?? 0);
+      let raw = runtime.offset;
+      if (loopSources[trackId] && audioContext) {
+        raw += Math.max(0, now - runtime.startedAt);
+      }
+      return normalizeOffsetForTrack(track, raw);
+    }
+
+    function stopLoopSource(trackId, options = {}) {
+      const preserveOffset = options.preserveOffset !== false;
+      const atTime = Number.isFinite(options.atTime) ? options.atTime : (audioContext?.currentTime ?? 0);
+      clearPendingStop(trackId);
       const source = loopSources[trackId];
-      if (!source) return;
+      if (!source) {
+        if (!preserveOffset) {
+          loopRuntime[trackId].offset = 0;
+          loopRuntime[trackId].startedAt = atTime;
+        }
+        return;
+      }
+      if (preserveOffset) {
+        loopRuntime[trackId].offset = getTrackOffset(trackId, atTime);
+        loopRuntime[trackId].startedAt = atTime;
+      } else {
+        loopRuntime[trackId].offset = 0;
+        loopRuntime[trackId].startedAt = atTime;
+      }
       loopSources[trackId] = null;
       source.onended = null;
       try { source.stop(); } catch {}
       try { source.disconnect(); } catch {}
     }
 
-    function stopAllLoops() {
-      stopLoopSource('normal');
-      stopLoopSource('fever');
+    function stopAllLoops(options = {}) {
+      stopLoopSource('normal', options);
+      stopLoopSource('fever', options);
+    }
+
+    function scheduleStop(trackId, delaySec, preserveOffset = true) {
+      clearPendingStop(trackId);
+      const delayMs = Math.max(0, Math.ceil(Math.max(0, Number(delaySec) || 0) * 1000));
+      pendingStops[trackId] = setTimeout(() => {
+        pendingStops[trackId] = null;
+        stopLoopSource(trackId, { preserveOffset });
+      }, delayMs);
     }
 
     function normalizeLoopBounds(track) {
@@ -233,9 +312,11 @@
             loopSources[trackId] = null;
           }
         };
-        const safeOffset = clamp(offset, 0, Math.max(0, (track.buffer.duration || 0) - 0.01));
+        const safeOffset = normalizeOffsetForTrack(track, offset);
         source.start(startAt, safeOffset);
         loopSources[trackId] = source;
+        loopRuntime[trackId].startedAt = startAt;
+        loopRuntime[trackId].offset = safeOffset;
         return source;
       } catch (error) {
         if (logger && typeof logger.warn === 'function') {
@@ -243,6 +324,15 @@
         }
         return null;
       }
+    }
+
+    function restartLoopSource(trackId, startAt, offset = 0) {
+      stopLoopSource(trackId, { preserveOffset: false, atTime: startAt });
+      return createLoopSource(trackId, startAt, offset);
+    }
+
+    function getNormalResumeTarget() {
+      return hasNormalResumeOffset ? normalResumeOffset : loopRuntime.normal.offset;
     }
 
     function setInstantModeGains(mode) {
@@ -378,7 +468,8 @@
       await resumeContext();
 
       clearLoseSource();
-      stopAllLoops();
+      clearPendingStops();
+      stopAllLoops({ preserveOffset: false, atTime: audioContext.currentTime });
       if (!enabled) {
         setInstantModeGains('normal');
         return;
@@ -386,8 +477,17 @@
 
       const now = audioContext.currentTime;
       const startAt = now + 0.01;
-      createLoopSource('normal', startAt, 0);
-      createLoopSource('fever', startAt, 0);
+      loopRuntime.normal.offset = 0;
+      loopRuntime.fever.offset = 0;
+      loopRuntime.normal.startedAt = startAt;
+      loopRuntime.fever.startedAt = startAt;
+      normalResumeOffset = 0;
+      hasNormalResumeOffset = false;
+      if (activeMode === 'fever') {
+        createLoopSource('fever', startAt, 0);
+      } else {
+        createLoopSource('normal', startAt, 0);
+      }
       setInstantModeGains(activeMode);
     }
 
@@ -395,48 +495,101 @@
       enabled = !!on;
       if (!ensureContextAndNodes()) return;
       if (!enabled) {
+        clearPendingStops();
         const now = audioContext.currentTime;
         normalBus.gain.cancelScheduledValues(now);
         feverBus.gain.cancelScheduledValues(now);
         normalBus.gain.setValueAtTime(0, now);
         feverBus.gain.setValueAtTime(0, now);
-        stopAllLoops();
+        stopAllLoops({ preserveOffset: true, atTime: now });
         clearLoseSource();
         return;
       }
       if (!sessionStarted || paused) return;
       void resumeContext().then(() => {
         if (disposed || !enabled || !sessionStarted || paused) return;
+        clearPendingStops();
         if (!loopSources.normal && !loopSources.fever) {
           const now = audioContext.currentTime;
           const startAt = now + 0.01;
-          createLoopSource('normal', startAt, 0);
-          createLoopSource('fever', startAt, 0);
+          if (activeMode === 'fever') {
+            createLoopSource('fever', startAt, loopRuntime.fever.offset);
+          } else {
+            createLoopSource('normal', startAt, getNormalResumeTarget());
+          }
         }
         setInstantModeGains(activeMode);
       });
     }
 
     function setMode(mode, crossfadeMs = defaultCrossfadeMs) {
-      activeMode = normalizeMode(mode, logger);
+      const nextMode = normalizeMode(mode, logger);
       if (!ensureContextAndNodes()) return;
       if (!sessionStarted || paused || !enabled) return;
-      if (!loopSources.normal && !loopSources.fever) {
-        const now = audioContext.currentTime;
-        const startAt = now + 0.01;
-        createLoopSource('normal', startAt, 0);
-        createLoopSource('fever', startAt, 0);
-        setInstantModeGains(activeMode);
+      const prevMode = activeMode;
+      activeMode = nextMode;
+      const now = audioContext.currentTime;
+      const startAt = now + 0.01;
+      const fadeSec = Math.max(0.02, Number(crossfadeMs || defaultCrossfadeMs) / 1000);
+
+      if (prevMode === nextMode) {
+        if (nextMode === 'fever') {
+          if (!loopSources.fever) {
+            createLoopSource('fever', startAt, loopRuntime.fever.offset);
+          }
+          if (loopSources.normal) {
+            stopLoopSource('normal', { preserveOffset: false, atTime: now });
+          }
+        } else {
+          if (!loopSources.normal) {
+            createLoopSource('normal', startAt, getNormalResumeTarget());
+          }
+          if (loopSources.fever) {
+            stopLoopSource('fever', { preserveOffset: false, atTime: now });
+          }
+        }
+        clearPendingStops();
+        setInstantModeGains(nextMode);
         return;
       }
-      setModeCrossfade(activeMode, crossfadeMs);
+
+      clearPendingStops();
+
+      if (prevMode === 'normal' && nextMode === 'fever') {
+        normalResumeOffset = getTrackOffset('normal', now);
+        hasNormalResumeOffset = true;
+        loopRuntime.normal.offset = normalResumeOffset;
+
+        restartLoopSource('fever', startAt, 0);
+        setModeCrossfade('fever', crossfadeMs);
+        scheduleStop('normal', fadeSec + 0.04, false);
+        return;
+      }
+
+      if (prevMode === 'fever' && nextMode === 'normal') {
+        const resumeOffset = getNormalResumeTarget();
+        restartLoopSource('normal', startAt, resumeOffset);
+        setModeCrossfade('normal', crossfadeMs);
+        scheduleStop('fever', fadeSec + 0.04, false);
+        hasNormalResumeOffset = false;
+        normalResumeOffset = resumeOffset;
+        return;
+      }
+
+      if (nextMode === 'fever') {
+        restartLoopSource('fever', startAt, 0);
+      } else {
+        restartLoopSource('normal', startAt, getNormalResumeTarget());
+      }
+      setInstantModeGains(nextMode);
     }
 
     function pause() {
       if (!sessionStarted) return;
       paused = true;
       if (!ensureContextAndNodes()) return;
-      stopAllLoops();
+      clearPendingStops();
+      stopAllLoops({ preserveOffset: true, atTime: audioContext.currentTime });
       clearLoseSource();
       const now = audioContext.currentTime;
       normalBus.gain.cancelScheduledValues(now);
@@ -455,11 +608,15 @@
         if (disposed || token !== sessionToken || !sessionStarted || paused || !enabled) return;
         await resumeContext();
         if (disposed || token !== sessionToken || !sessionStarted || paused || !enabled) return;
-        stopAllLoops();
+        clearPendingStops();
+        stopAllLoops({ preserveOffset: true, atTime: audioContext.currentTime });
         const now = audioContext.currentTime;
         const startAt = now + 0.01;
-        createLoopSource('normal', startAt, 0);
-        createLoopSource('fever', startAt, 0);
+        if (activeMode === 'fever') {
+          createLoopSource('fever', startAt, loopRuntime.fever.offset);
+        } else {
+          createLoopSource('normal', startAt, getNormalResumeTarget());
+        }
         setInstantModeGains(activeMode);
       })();
     }
@@ -469,6 +626,7 @@
       const token = ++sessionToken;
       sessionStarted = false;
       paused = false;
+      clearPendingStops();
       const fadeSec = Math.max(0.02, defaultCrossfadeMs / 1000);
       const now = audioContext.currentTime;
       const normalFrom = clamp(normalBus.gain.value, 0, 1);
@@ -480,7 +638,7 @@
       normalBus.gain.linearRampToValueAtTime(0, now + fadeSec);
       feverBus.gain.linearRampToValueAtTime(0, now + fadeSec);
       setTimeout(() => {
-        stopAllLoops();
+        stopAllLoops({ preserveOffset: false, atTime: audioContext?.currentTime ?? 0 });
       }, Math.ceil((fadeSec + 0.04) * 1000));
 
       if (!enabled) return;
@@ -562,7 +720,8 @@
       disposed = true;
       sessionStarted = false;
       paused = false;
-      stopAllLoops();
+      clearPendingStops();
+      stopAllLoops({ preserveOffset: false, atTime: audioContext?.currentTime ?? 0 });
       clearLoseSource();
       if (normalBus) {
         try { normalBus.disconnect(); } catch {}
