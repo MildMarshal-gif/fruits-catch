@@ -250,6 +250,20 @@
         originY: BASE_CANVAS_H * 0.35
       };
       let scorePulse = 0;
+      const SCORE_MILESTONES = [100, 500, 1000, 3000, 5000, 10000];
+      const SCORE_MILESTONE_PALETTES = [
+        { flashRgb: '255,226,120', textStart: '#fff8cc', textEnd: '#ffcf5a', accent: '#ffe897', sub: 'ナイスキャッチ！' },
+        { flashRgb: '255,173,124', textStart: '#fff1d4', textEnd: '#ff9f5c', accent: '#ffc67b', sub: 'いい感じ！' },
+        { flashRgb: '255,148,170', textStart: '#ffe7f1', textEnd: '#ff7fb2', accent: '#ffb7d6', sub: 'グレート！' },
+        { flashRgb: '176,170,255', textStart: '#f3f0ff', textEnd: '#a89bff', accent: '#d7d0ff', sub: 'スーパー！' },
+        { flashRgb: '126,221,255', textStart: '#ebfbff', textEnd: '#79ceff', accent: '#bbecff', sub: 'エクセレント！' },
+        { flashRgb: '255,240,166', textStart: '#fffdf0', textEnd: '#ffd76a', accent: '#fff2ba', sub: 'レジェンド級！' }
+      ];
+      const scoreMilestoneFx = {
+        reached: new Set(),
+        pending: [],
+        active: null
+      };
       let runtimeFxQuality = 1;
 
       const FEATURE_FLAGS = {
@@ -1101,12 +1115,69 @@
         updateScoreCardState();
       }
 
+      function resetScoreMilestoneFx() {
+        scoreMilestoneFx.reached.clear();
+        scoreMilestoneFx.pending.length = 0;
+        scoreMilestoneFx.active = null;
+      }
+
+      function createScoreMilestoneEntry(milestone) {
+        const milestoneIndex = SCORE_MILESTONES.indexOf(milestone);
+        const paletteIndex = Math.max(0, Math.min(SCORE_MILESTONE_PALETTES.length - 1, milestoneIndex));
+        const palette = SCORE_MILESTONE_PALETTES[paletteIndex];
+        return {
+          milestone,
+          title: `${milestone}突破！`,
+          subtitle: palette.sub,
+          flashRgb: palette.flashRgb,
+          textStart: palette.textStart,
+          textEnd: palette.textEnd,
+          accent: palette.accent,
+          t: 0,
+          life: reducedMotionQuery.matches ? 1.02 : 1.35
+        };
+      }
+
+      function queueReachedMilestones(prevScore, nextScore) {
+        if (nextScore <= prevScore) return;
+        for (const milestone of SCORE_MILESTONES) {
+          if (prevScore < milestone && nextScore >= milestone && !scoreMilestoneFx.reached.has(milestone)) {
+            scoreMilestoneFx.reached.add(milestone);
+            scoreMilestoneFx.pending.push(createScoreMilestoneEntry(milestone));
+          }
+        }
+      }
+
+      function triggerScoreMilestoneBurst(entry) {
+        const cx = getGameWidth() * 0.5;
+        const cy = getGameHeight() * 0.44;
+        pop(cx, cy, entry.accent, reducedMotionQuery.matches ? 28 : 46);
+        const burstCount = reducedMotionQuery.matches ? 4 : 8;
+        const orbitRadius = Math.min(getGameWidth(), getGameHeight()) * (reducedMotionQuery.matches ? 0.24 : 0.32);
+        for (let i = 0; i < burstCount; i++) {
+          const angle = (Math.PI * 2 * i / burstCount) + rand(-0.20, 0.20);
+          const px = cx + Math.cos(angle) * orbitRadius;
+          const py = cy + Math.sin(angle) * orbitRadius * 0.72;
+          pop(px, py, i % 2 === 0 ? entry.textEnd : entry.accent, reducedMotionQuery.matches ? 8 : 14);
+        }
+        triggerFeverHitFeedback(cx, cy, entry.textEnd);
+        sfx('star');
+      }
+
+      function activateNextScoreMilestoneFx() {
+        if (scoreMilestoneFx.active || scoreMilestoneFx.pending.length === 0) return;
+        scoreMilestoneFx.active = scoreMilestoneFx.pending.shift();
+        triggerScoreMilestoneBurst(scoreMilestoneFx.active);
+      }
+
       function applyScoreGain(o) {
+        const prevScore = score;
         const basePts = o.points;
         const multiplier = fever ? 2 : 1;
         const got = basePts * multiplier;
         score += got;
         syncScoreDisplay();
+        queueReachedMilestones(prevScore, score);
 
         const scoreText = `＋${basePts}`;
         addFloatText(o.x, o.y - 12, scoreText, o.color, {
@@ -1720,6 +1791,7 @@
         paused = false;
         damageFlash = 0;
         shootingStarSpawnTimer = 0;
+        resetScoreMilestoneFx();
         if (lifeFxTimeout) {
           clearTimeout(lifeFxTimeout);
           lifeFxTimeout = null;
@@ -3506,6 +3578,114 @@
         ctx.restore();
       }
 
+      function drawTrackedText(text, x, y, trackingPx, mode = 'fill') {
+        const value = text == null ? '' : String(text);
+        if (!value) return;
+        const glyphs = Array.from(value);
+        if (!glyphs.length) return;
+        const gap = Math.max(0, Number.isFinite(trackingPx) ? trackingPx : 0);
+        const widths = glyphs.map((glyph) => ctx.measureText(glyph).width);
+        let totalWidth = 0;
+        for (const width of widths) totalWidth += width;
+        totalWidth += gap * Math.max(0, glyphs.length - 1);
+
+        const originalAlign = ctx.textAlign;
+        let cursorX = x;
+        if (originalAlign === 'center') cursorX = x - totalWidth * 0.5;
+        else if (originalAlign === 'right' || originalAlign === 'end') cursorX = x - totalWidth;
+
+        ctx.textAlign = 'left';
+        for (let i = 0; i < glyphs.length; i++) {
+          if (mode === 'stroke') ctx.strokeText(glyphs[i], cursorX, y);
+          else ctx.fillText(glyphs[i], cursorX, y);
+          cursorX += widths[i] + gap;
+        }
+        ctx.textAlign = originalAlign;
+      }
+
+      function drawScoreMilestoneOverlay(dt) {
+        activateNextScoreMilestoneFx();
+        const active = scoreMilestoneFx.active;
+        if (!active) return;
+
+        active.t += dt;
+        const progress = clamp(active.t / active.life, 0, 1);
+        const intro = reducedMotionQuery.matches ? 0.12 : 0.22;
+        const outro = reducedMotionQuery.matches ? 0.30 : 0.26;
+        let alpha = 1;
+        if (progress < intro) {
+          alpha = easeOutCubic(progress / intro);
+        } else if (progress > 1 - outro) {
+          alpha = 1 - easeInCubic((progress - (1 - outro)) / outro);
+        }
+        const wobble = reducedMotionQuery.matches ? 0 : Math.sin(progress * Math.PI * 6) * 0.014;
+        const scale = 1 + (1 - progress) * 0.08 + wobble;
+        const w = getGameWidth();
+        const h = getGameHeight();
+        const cx = w * 0.5;
+        const cy = h * 0.44;
+
+        ctx.save();
+        const flash = ctx.createRadialGradient(
+          cx,
+          cy,
+          Math.max(2, Math.min(w, h) * 0.08),
+          cx,
+          cy,
+          Math.max(w, h) * 0.82
+        );
+        flash.addColorStop(0, `rgba(${active.flashRgb},${(0.42 * alpha).toFixed(3)})`);
+        flash.addColorStop(0.42, `rgba(${active.flashRgb},${(0.22 * alpha).toFixed(3)})`);
+        flash.addColorStop(1, `rgba(${active.flashRgb},0)`);
+        ctx.fillStyle = flash;
+        ctx.fillRect(0, 0, w, h);
+
+        const sweep = ctx.createLinearGradient(0, 0, w, 0);
+        sweep.addColorStop(0, `rgba(${active.flashRgb},0)`);
+        sweep.addColorStop(0.5, `rgba(${active.flashRgb},${(0.16 * alpha).toFixed(3)})`);
+        sweep.addColorStop(1, `rgba(${active.flashRgb},0)`);
+        ctx.fillStyle = sweep;
+        ctx.fillRect(0, h * 0.28, w, h * 0.32);
+
+        ctx.translate(cx, cy);
+        ctx.scale(scale, scale * drawFixScaleY);
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        const titleSize = Math.round(clamp(Math.min(w * 0.108, h * 0.20), 34, 108));
+        const subtitleSize = Math.max(18, Math.round(titleSize * 0.34));
+        const titleTracking = titleSize * 0.03;
+        const subtitleTracking = subtitleSize * 0.03;
+
+        ctx.font = `900 ${titleSize}px ${canvasBodyFontFamily}`;
+        ctx.lineWidth = Math.max(5, Math.round(titleSize * 0.16));
+        ctx.strokeStyle = `rgba(35,41,70,${(0.72 * alpha).toFixed(3)})`;
+        drawTrackedText(active.title, 0, -titleSize * 0.04, titleTracking, 'stroke');
+
+        const titleFill = ctx.createLinearGradient(-titleSize, 0, titleSize, 0);
+        titleFill.addColorStop(0, active.textStart);
+        titleFill.addColorStop(0.56, active.textEnd);
+        titleFill.addColorStop(1, active.textStart);
+        ctx.fillStyle = titleFill;
+        ctx.globalAlpha = alpha;
+        drawTrackedText(active.title, 0, -titleSize * 0.04, titleTracking, 'fill');
+
+        ctx.globalAlpha = alpha * 0.95;
+        ctx.font = `700 ${subtitleSize}px ${canvasBodyFontFamily}`;
+        ctx.lineWidth = Math.max(3, Math.round(subtitleSize * 0.20));
+        ctx.strokeStyle = 'rgba(29,36,62,.50)';
+        drawTrackedText(active.subtitle, 0, titleSize * 0.56, subtitleTracking, 'stroke');
+        ctx.fillStyle = active.accent;
+        drawTrackedText(active.subtitle, 0, titleSize * 0.56, subtitleTracking, 'fill');
+
+        ctx.restore();
+        ctx.globalAlpha = 1;
+
+        if (progress >= 1) {
+          scoreMilestoneFx.active = null;
+        }
+      }
+
       // Main loop
       let last = performance.now();
       function frame(now) {
@@ -3686,6 +3866,7 @@
             ctx.restore();
           }
           damageFlash = Math.max(0, damageFlash - dt * (reducedMotionQuery.matches ? 1.9 : 2.7));
+          drawScoreMilestoneOverlay(dt);
 
           syncSharedState();
         } catch (error) {

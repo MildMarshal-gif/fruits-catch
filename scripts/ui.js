@@ -61,7 +61,8 @@
 
     return {
       damageFlash: nextDamageFlash,
-      lifeFxTimeout: nextLifeFxTimeout
+      lifeFxTimeout: nextLifeFxTimeout,
+      stage
     };
   }
 
